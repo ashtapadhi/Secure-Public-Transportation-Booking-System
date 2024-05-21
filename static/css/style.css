@@ -1,0 +1,181 @@
+.menu {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.menu a {
+    text-decoration: none;
+    margin: 0 10px;
+}
+
+.menu button {
+    background-color: #4CAF50; /* Green */
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 8px;
+}
+
+.menu button:hover {
+    background-color: #45a049;
+}
+
+.headings {
+    text-align: center;
+    color: #548a56;
+    display: inline-block;
+    font-family: fantasy;
+    
+
+}
+
+h2{
+    margin-top: 220px;
+}
+
+h3{
+    margin-top: 80px;
+}
+
+.Form_container{
+    text-align: center;
+    color: #596759;
+    display: grid;
+    font-family:'Times New Roman', Times, serif;
+}
+
+
+
+.lrforms{
+    
+    border-radius: 5px;
+    text-align: center;
+    color: #596759;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    font-family:'Times New Roman', Times, serif;
+    gap: 10px;
+    padding: 20px;
+    max-width: 400px;
+    margin: 0 auto;
+    background-color: #f0f0f0;
+       
+}
+
+.lrforms button{
+    background-color: #596759; 
+    border: none;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    display: ruby-base;
+    cursor: pointer;
+}
+
+.bussearchandbookform{
+    border-radius: 5px;
+    text-align: center;
+    color: #596759;
+    display: inline;
+    font-family:'Times New Roman', Times, serif;
+    gap: 10px;
+    padding: 20px;
+    max-width: 600px;
+    margin: 0 auto;
+    background-color: #f0f0f0;
+}
+.bussearchandbookform button{
+    background-color: #596759; 
+    border: none;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    display: inline;
+    cursor: pointer;
+}
+
+#busList{
+    color: #596759;
+    gap: 20px;
+    text-align: center;
+
+}
+
+#busList button{
+    background-color: #596759; 
+    border: none;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    display: inline;
+    cursor: pointer;
+}
+
+li {
+    background-color: #f0f0f0;
+    padding: 10px;
+    margin-bottom: 5px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.userdetails{
+    background-color: #f0f0f0;
+    padding: 10px;
+    margin-bottom: 5px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    color: #596759;
+    gap: 20px;
+    text-align: center;
+}
+
+.userdetails button{
+    background-color: #596759; 
+    border: none;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    display: ruby-base;
+    cursor: pointer;
+    padding: 5px 10px;
+    gap:20px
+}
+
+.user-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.user-table th, .user-table td {
+    padding: 10px;
+    text-align: left;
+}
+.user-table th {
+    font-weight: bold;
+}
+
+#bookinglist{
+    color: #596759;
+    gap: 20px;
+    text-align: center;
+
+}
+
+#bookinglist button{
+    background-color: #596759; 
+    border: none;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    display: inline;
+    cursor: pointer;
+    gap: 10px
+}

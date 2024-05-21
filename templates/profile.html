@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<head>
+    <title>
+        profile
+    </title>
+    <link rel="stylesheet" type="text/css" href="static/css/style.css">
+</head>
+<body>
+   <center>
+    <div id="menuContainer"> </div>
+    <p id="user"></p>
+    <div class="headings">
+    <h3>Profile</h3></div>
+    <div class="userdetails">
+        <table class="user-table">
+            <tr>
+                <th>Name</th>
+                <td id="name"></td>
+            </tr>
+            <tr>
+                <th>Username</th>
+                <td id="username"></td>
+            </tr>
+            <tr>
+                <th>Email</th>
+                <td id="email"></td>
+               
+            </tr>
+            <tr>
+                <th>Phone</th>
+                <td id="phone"></td>
+            </tr>
+                
+            
+        </table>
+        <button id="deleteAccountButton">Delete Account</button>
+        <a href="/edit"><button id="editAccountButton">Edit Account</button> </a>
+    </div>
+   
+   
+    
+</center>
+
+    <script>
+        async function logout() {
+    try {
+        const response = await fetch('/logout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        if (response.ok) {
+            // Optionally, clear any client-side storage
+            // localStorage.removeItem('token');
+            // Redirect to the login page
+            window.location.href = '/';
+        } else {
+            alert('Logout failed');
+        }
+    } catch (error) {
+        console.error('Error during logout:', error);
+        alert('An error occurred. Please try again.');
+    }
+}
+        function getCookie(name) {
+            const cookieValue = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+            return cookieValue ? cookieValue.pop() : '';
+        }
+
+        // Get the username cookie value
+        const username = getCookie('session_id');
+        function loadMenu() {
+            fetch('menu.html')
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('menuContainer').innerHTML = data;
+                });
+        }
+       
+       
+        document.addEventListener('DOMContentLoaded', async function() {
+            loadMenu();
+            const response = await fetch('/userdetails', {
+                method: 'GET',
+                headers: {
+                    //'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            if (response.ok) {
+                const user = await response.json();
+                document.getElementById('name').textContent = `${user.name}`;
+                document.getElementById('username').textContent = `${user.username}`;
+                document.getElementById('email').textContent = `${user.email}`;
+                document.getElementById('phone').textContent = `${user.phone_number} `;
+            document.getElementById("user").innerHTML=username;
+            console.log(username);}
+            else{
+                alert('Error fetching bus details');
+            }
+
+        });
+        document.getElementById('deleteAccountButton').addEventListener('click', async function() {
+            if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+                //const token = localStorage.getItem('token');
+                const username=document.getElementById("username").value;
+                const response = await fetch('/delete_account', {
+                    method: 'DELETE',
+                    headers: {
+                        //'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({username})  // Replace with actual user ID
+                });
+
+                if (response.ok) {
+                    alert('Account deleted successfully.');
+                    localStorage.removeItem('token');
+                    window.location.href = '/';
+                } else {
+                    alert('Error deleting account.');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
