@@ -1,0 +1,38 @@
+<!doctype html>
+        <head>
+        <title>Create Account</title>
+        </head>
+        <body>
+        <div class="Form_container">
+        <h2>Create Account</h2>
+        <form id="registerform" action="/register" method="POST">
+        <label>Name</label><input type="text" name="name" required>
+        <label>Username</label><input type="text" name="username" required>
+        <label>Password</label><input type="password" name="password" required>
+        <label>Re-enter Password</label><input type="password" name="password2" required>
+        <label>Email</label><input type="email" name="email" required>
+        <button type="submit">Register</button>
+        </form>
+        <a href="/login">Login</a>
+        </div>
+        <script>
+            document.getElementById("registerform").addEventListener("submit",async(event)=>{
+                event.preventDefault();
+                const form=event.target;
+                const formdata= new FormData(form);
+                const data=new URLSearchParams(formdata);
+                const response= await fetch(form.action,{
+                    method:'POST',
+                    body:data,
+                });
+                const result=await response.json();
+                if (response.ok){
+                    localStorage.setItem('token',result.token);
+                    window.location.href='/dashboard';
+                }
+                else{
+                    alert(result.error)
+
+                }
+            });
+        </script>

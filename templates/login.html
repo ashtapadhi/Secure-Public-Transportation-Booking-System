@@ -1,0 +1,37 @@
+<!doctype html>
+        <head>
+        <title>login</title>
+        </head>
+        <body>
+        <div class="login_container">
+        <h2>Login</h2>
+        <form id="loginform" action="/login" method="POST">
+        <label>Username</label><input type="text" name="username" id="username" required>
+        <label>Password</label><input type="password" name="password" id="password" required>
+        <button type="submit">Login</button>
+        </form>
+        <a href="/register">Create Account</a>
+        </div>
+        <script>
+            document.getElementById("loginform").addEventListener("submit",async(event)=>{
+                event.preventDefault();
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                const response= await fetch('/login',{
+                    method:'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ username, password })
+
+                });
+                const result=await response.json();
+                if (response.ok){
+                    localStorage.setItem('token',result.token);
+                    console.log(result.token)
+                    window.location.href='/dashboard';
+                }
+                else{
+                    alert(result.error)
+
+                }
+            });
+        </script>
