@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<head>
+    <title>
+        profile
+    </title>
+    <link rel="stylesheet" type="text/css" href="static/css/style.css">
+</head>
+<body>
+   
+    <div id="menuContainer"> </div>
+    <p id="user"></p>
+    <button>Delete Account</button>
+    
+    <script>
+        function loadMenu() {
+            fetch('menu.html')
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('menuContainer').innerHTML = data;
+                });
+        }
+        function getCookie(name) {
+            const cookieValue = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+            return cookieValue ? cookieValue.pop() : '';
+        }
+        const username = getCookie('username');
+        document.addEventListener('DOMContentLoaded', function() {
+            loadMenu();
+            document.getElementById("user").innerHTML=username;
+            confirm.log(username);
+        });
+        
+    </script>
+</body>
+</html>

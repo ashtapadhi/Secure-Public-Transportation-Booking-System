@@ -1,54 +1,121 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <title>
-            dashboard
-        </title>
-    </head>
-    <body>
-        <div class="container1">
-            <h2>Dashboard</h2>
-            <p id="welcomeMessage">Welcome to the secure dashboard!</p>
-            <a href="/" onclick="logout()">Logout</a>
+<head>
+    <title>Dashboard</title>
+    <link rel="stylesheet" type="text/css" href="static/css/style.css">
+</head>
+<body>
+    <center>
+        <div id="menuContainer">
+        
         </div>
-        <div class="menu">
-<a href="">Profile</a>
-<a href="">My Bookings</a>
-<a href="">Cancel Bookings</a>
-<a href="">Search Buses</a>
-        </div>
-        <div class="container">
-            <label>From</label><input type="text" name="from">
-            <label>To</label><input type="text" name="to">
-            <button type="submit" >Search</button>
-        </div>
+    <div class="headings">
+        <h3>Find Routes!</h3>
+        <p id="welcomeMessage"></p>
+    </div>
+    
+    <div class="Form_container">
+        <form id="searchbus" class="bussearchandbookform" method="POST">
+            <label>From</label><input type="text" id="from" name="from" required>
+            <label>To</label><input type="text" id="to" name="to" required>
+            <label>Date of Travel</label><input type="date" id="dateoftravel" name="dateoftravel" required>
+            <button type="submit">Search</button>
+        </form>
+    </div>
+    <div class="headings">
+        <h3 id="buslistheading"></h3>
+        <ul id="busList" style="list-style-type:none;"></ul>
+      
+    </div>
+</center>
+    <script>
 
-       
-        <script>
-            document.addEventListener('DOMContentLoaded', async function() {
-                const token = localStorage.getItem('token');
-                if (!token) {
-                    window.location.href = '/';
-                    return;
-                }
-                const response = await fetch('/dashboard', {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
+function loadMenu() {
+            fetch('menu.html')
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('menuContainer').innerHTML = data;
                 });
-                if (response.ok) {
-                    const data = await response.json();
-                    document.getElementById('content').textContent = 'Welcome, ' + data.username;
-                } else {
-                    alert('Unauthorized');
-                    localStorage.removeItem('token');
-                    window.location.href = '/';
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            loadMenu();
+        });
+function getCookie(name) {
+            const cookieValue = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+            return cookieValue ? cookieValue.pop() : '';
+        }
+
+        // Get the username cookie value
+        const username = getCookie('username');
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('traveldate').setAttribute('min', today);
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/';
+                return;
+            }
+            const response = await fetch('/dashboard', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
                 }
             });
-        </script>
-    </body>
-    </html>
-    </body>
+            if (response.ok) {
+                const data = await response.json();
+                document.getElementById('welcomeMessage').textContent = 'Welcome, ' + username;
+            } else {
+                alert('Unauthorized');
+                localStorage.removeItem('token');
+                window.location.href = '/';
+            }
+        });
+
+        document.getElementById('searchbus').addEventListener("submit", async function(event){
+            event.preventDefault();
+            const to = document.getElementById('to').value;
+            const from = document.getElementById('from').value;
+            const token = localStorage.getItem('token');
+            document.getElementById('buslistheading').innerHTML="Available Buses"
+
+            const bus_response = await fetch('/buses', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ from, to })
+            });
+
+            if (bus_response.ok) {
+                const buses = await bus_response.json();
+                const busList = document.getElementById('busList');
+                busList.innerHTML = ''; // Clear previous results
+                buses.forEach(bus => {
+                    const listItem = document.createElement('li');
+                    listItem.innerHTML = `Bus Name: <strong>${bus.bus_name}</strong>&emsp;Fare: <strong>${bus.bus_fare}</strong>&emsp;Available Seats: <strong>${bus.available_seats}</strong>`;
+
+
+       
+                    const bookButton = document.createElement('button');
+                    bookButton.textContent = 'Book';
+        
+       
+                    bookButton.addEventListener('click', () => {
+                window.location.href = `/book?bus_id=${bus.id}`; // Redirect to booking page with bus ID
+            });
+        // Append the button to the list item
+        listItem.appendChild(bookButton);
+
+        // Append the list item to the bus list
+        busList.appendChild(listItem);
+                });
+            } else {
+                alert('Error fetching buses');
+            }
+        });
+    </script>
+</body>
 </html>

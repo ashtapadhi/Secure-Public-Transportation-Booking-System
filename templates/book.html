@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Book Tickets</title>
+    <link rel="stylesheet" type="text/css" href="static/css/style.css">
+</head>
+<body>
+    <center>
+        <div id="menuContainer">
+        
+        </div>
+        <div id="busdetails" class="headings">
+            <h3 id="busname"></h3>
+            <h5 id="fare"></h5>
+            <h6 id="routes"></h6>
+        </div>
+        <div class="Form_container">
+        <form id="booktickets" class="bussearchandbookform" method="POST">
+            <label>Number of Passengers</label>
+            <input type="number" id="noofpass" min="1" required>
+            <label>Date of Travel</label>
+            <input type="date" id="traveldate" required>
+            <label>Total fare</label>
+            <input type="text" id="totalfare" disabled>
+            <button type="submit">Book</button>
+        </form>
+    </div>
+    </center>
+    <script>
+        function loadMenu() {
+            fetch('menu.html')
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('menuContainer').innerHTML = data;
+                });
+        }
+        document.addEventLi
+        document.addEventListener('DOMContentLoaded', async function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const bus_id = urlParams.get('bus_id');
+            console.log(bus_id);
+
+            // Fetch bus details using bus_id
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/busdetails?bus_id=${bus_id}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const bus = await response.json();
+                document.getElementById('busname').textContent = `Bus Name: ${bus.bus_name}`;
+                document.getElementById('fare').textContent = `Fare per Passenger: ${bus.bus_fare}`;
+                document.getElementById('routes').textContent = `Route: ${bus.route_start} to ${bus.route_end}`;
+                
+                // Update fare dynamically
+                document.getElementById('noofpass').addEventListener('input', function() {
+                    const farePerPassenger = bus.bus_fare;
+                    const numPassengers = parseInt(this.value, 10);
+                    if (numPassengers > 0) {
+                        document.getElementById('totalfare').value = farePerPassenger * numPassengers;
+                    } else {
+                        document.getElementById('totalfare').value = '';
+                    }
+                });
+            } else {
+                alert('Error fetching bus details');
+            }
+
+            // Set minimum date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('traveldate').setAttribute('min', today);
+        });
+
+        document.getElementById('booktickets').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const no_of_pass = document.getElementById('noofpass').value;
+            if (no_of_pass < 1) {
+                alert("Choose a valid number of passengers");
+                return;
+            }
+
+            const travel_date = document.getElementById('traveldate').value;
+            if (!travel_date) {
+                alert("Please choose a valid travel date");
+                return;
+            }
+
+            const bus_id = new URLSearchParams(window.location.search).get('bus_id');
+            const token = localStorage.getItem('token');
+            const bookingResponse = await fetch('/book', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    user_id,
+                    bus_id,
+                    no_of_pass,
+                    travel_date,
+                    total_fare: document.getElementById('totalfare').value
+                })
+            });
+
+            if (bookingResponse.ok) {
+                alert('Booking successful!');
+                // Optionally redirect to another page or update UI
+                window.location.href = '/mybookings';
+            } else {
+                alert('Error booking the bus.');
+            }
+        });
+    </script>
+</body>
+</html>

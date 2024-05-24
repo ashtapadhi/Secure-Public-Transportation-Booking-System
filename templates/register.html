@@ -1,26 +1,50 @@
 <!doctype html>
         <head>
         <title>Create Account</title>
+        <link rel="stylesheet" type="text/css" href="static/css/style.css">
         </head>
         <body>
-        <div class="Form_container">
-        <h2>Create Account</h2>
-        <form id="registerform" action="/register" method="POST">
+            <center>
+        <div class="headings"> <h2>Create Account</h2></div>
+       
+        <div class="Form_container"></div>
+        <form id="registerform" class="lrforms" action="/register" method="POST">
         <label>Name</label><input type="text" name="name" required>
         <label>Username</label><input type="text" name="username" required>
         <label>Password</label><input type="password" name="password" required>
         <label>Re-enter Password</label><input type="password" name="password2" required>
         <label>Email</label><input type="email" name="email" required>
+        <label>Phone number</label><input type="tel" name="phone_number" required>
         <button type="submit">Register</button>
         </form>
-        <a href="/login">Login</a>
+        
         </div>
+        <div class="menu"><a href="/login"><button>Login</button></a></div>
+    </center>
         <script>
             document.getElementById("registerform").addEventListener("submit",async(event)=>{
                 event.preventDefault();
                 const form=event.target;
                 const formdata= new FormData(form);
                 const data=new URLSearchParams(formdata);
+                const password = form.password.value;
+                const password2 = form.password2.value;
+                const phone=form.phone_number.value;
+
+                if (password !== password2) {
+                    alert("Passwords do not match.");
+                return;
+                }
+                const passwordRegex = /^(?=.*[0-9])(?=.*[a-zA-Z]).{8,}$/;
+                if (!passwordRegex.test(password)) {
+                    alert("Password must be at least 8 characters long and include at least one number.");
+                return;
+                }
+                const phoneRegex = /^\d{10}$/;
+                if (!phoneRegex.test(phone)){
+                    alert("Please provide a valid phone number");
+                return;
+                }
                 const response= await fetch(form.action,{
                     method:'POST',
                     body:data,
