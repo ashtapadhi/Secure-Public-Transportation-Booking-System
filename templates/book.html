@@ -24,7 +24,7 @@
             <input type="text" id="totalfare" disabled>
             <button type="submit">Book</button>
         </form>
-    </div>
+        </div>
     </center>
     <script>
         function loadMenu() {
@@ -34,18 +34,18 @@
                     document.getElementById('menuContainer').innerHTML = data;
                 });
         }
-        document.addEventLi
+    
         document.addEventListener('DOMContentLoaded', async function() {
             const urlParams = new URLSearchParams(window.location.search);
             const bus_id = urlParams.get('bus_id');
             console.log(bus_id);
 
             // Fetch bus details using bus_id
-            const token = localStorage.getItem('token');
+            //const token = localStorage.getItem('token');
             const response = await fetch(`/busdetails?bus_id=${bus_id}`, {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                   // 'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             });
@@ -90,15 +90,14 @@
             }
 
             const bus_id = new URLSearchParams(window.location.search).get('bus_id');
-            const token = localStorage.getItem('token');
-            const bookingResponse = await fetch('/book', {
+           // const token = localStorage.getItem('token');
+           const bookingResponse = await fetch('/book', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    //'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    user_id,
                     bus_id,
                     no_of_pass,
                     travel_date,
@@ -109,7 +108,7 @@
             if (bookingResponse.ok) {
                 alert('Booking successful!');
                 // Optionally redirect to another page or update UI
-                window.location.href = '/mybookings';
+                window.location.href = '/bookings';
             } else {
                 alert('Error booking the bus.');
             }

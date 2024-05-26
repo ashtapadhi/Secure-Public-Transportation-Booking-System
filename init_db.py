@@ -51,13 +51,18 @@ CREATE TABLE IF NOT EXISTS booking_details (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     bus_id INTEGER NOT NULL,
+          route_id INTEGER NOT NULL,
+    bus_name TEXT NOT NULL,
+    route_start TEXT NOT NULL,
+    route_end TEXT NOT NULL,
     booking_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     seats_booked INTEGER NOT NULL,
     total_fare REAL NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (bus_id) REFERENCES buses(id) ON DELETE CASCADE
+    FOREIGN KEY (bus_id) REFERENCES buses(id) ON DELETE CASCADE,
+    FOREIGN KEY (route_id) REFERENCES routes(route_id) ON DELETE CASCADE
 )
 ''')
 

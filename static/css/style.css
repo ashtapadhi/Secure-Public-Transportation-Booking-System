@@ -126,3 +126,56 @@ li {
     border-radius: 5px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
+
+.userdetails{
+    background-color: #f0f0f0;
+    padding: 10px;
+    margin-bottom: 5px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    color: #596759;
+    gap: 20px;
+    text-align: center;
+}
+
+.userdetails button{
+    background-color: #596759; 
+    border: none;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    display: ruby-base;
+    cursor: pointer;
+    padding: 5px 10px;
+    gap:20px
+}
+
+.user-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.user-table th, .user-table td {
+    padding: 10px;
+    text-align: left;
+}
+.user-table th {
+    font-weight: bold;
+}
+
+#bookinglist{
+    color: #596759;
+    gap: 20px;
+    text-align: center;
+
+}
+
+#bookinglist button{
+    background-color: #596759; 
+    border: none;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    display: inline;
+    cursor: pointer;
+    gap: 10px
+}
