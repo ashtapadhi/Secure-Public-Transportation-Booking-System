@@ -3,7 +3,6 @@ import json
 
 conn = sqlite3.connect('database.db')
 conn.execute("PRAGMA foreign_keys = ON")
-
 c = conn.cursor()
 
 # Create table
