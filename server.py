@@ -13,6 +13,9 @@ import html
 import http.cookies 
 import uuid
 import requests
+from datetime import datetime
+from datetime import timedelta
+
 
 load_dotenv()
 
@@ -23,11 +26,13 @@ if not SECRET_KEY:
 
 def create_session(user_id):
     session_id = str(uuid.uuid4())
+    expiry = datetime.now() + timedelta(hours=1,)
+    add_session(session_id,user_id,expiry)
     SESSIONS[session_id] = user_id
     return session_id
 
-def get_user_by_session(session_id):
-    return SESSIONS.get(session_id)
+#def get_user_by_session(session_id):
+#    return SESSIONS.get(session_id)
 
 def hash_password(password):
     return base64.b64encode(hashlib.sha256(password.encode()).digest()).decode()
@@ -141,6 +146,15 @@ def get_bus_details(bus_id):
     bus = c.fetchone()
     conn.close()
     return bus
+def booked_seats(bus_id,date):
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+    c.execute('''
+        SELECT count(id) FROM booking_details WHERE bus_id=? and booking_date=?
+    ''', (bus_id,date))
+    booking = c.fetchall()
+    conn.close()
+    return booking
 
 def get_booking_details(user_id):
     conn = sqlite3.connect('database.db')
@@ -186,6 +200,40 @@ def cancel_booking(booking_id):
         conn.close()
         return False
 
+def add_session(session_id,user_id,expiry):
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+    c.execute('''
+            INSERT INTO sessions (session_id, user_id, expires_at) 
+            VALUES (?, ?, ?)
+        ''', (session_id, user_id, expiry))
+    conn.commit()
+    conn.close()
+
+def get_current_user(session_id):
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+    c.execute('SELECT user_id, expires_at FROM sessions WHERE session_id = ?', (session_id,))
+    session = c.fetchone()
+    conn.close()
+    return session
+
+def delete_session(session_id):
+
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+    try:
+
+        c.execute('DELETE FROM sessions WHERE session_id = ?', (session_id,))
+        conn.close()
+        rows_affected = c.rowcount
+        conn.close()
+        return rows_affected > 0
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        conn.close()
+        return False
+
 class RequestHandler(http.server.SimpleHTTPRequestHandler):
     def serve_static_file(self, path, content_type):
         try:
@@ -218,8 +266,8 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(load_template('register.html').encode())
         elif self.path == '/dashboard':
-            session_id = self.get_cookie('session_id') #session
-            user_id = get_user_by_session(session_id)
+            #session_id = self.get_cookie('session_id') #session
+            user_id = self.get_user_by_session()
             print("user ", user_id)
             if user_id:
                 self.send_response(200)
@@ -260,8 +308,8 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             booking_page = load_template('book.html').replace('{{bus_id}}', bus_id)
             self.wfile.write(booking_page.encode())
         elif self.path=='/profile':
-            session_id = self.get_cookie('session_id') #session
-            user_id = get_user_by_session(session_id)
+            #session_id = self.get_cookie('session_id') #session
+            user_id = self.get_user_by_session()
             if user_id:
                 self.send_response(200)
                 self.send_header('content-type','text/html')
@@ -304,9 +352,9 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             content_type = 'text/css' if path.endswith('.css') else 'application/octet-stream'
             self.serve_static_file(path[1:], content_type)
         elif self.path=='/userdetails':
-            session_id = self.get_cookie('session_id') #session
-            user_id = get_user_by_session(session_id)
-            print("session:",user_id)
+            #session_id = self.get_cookie('session_id') #session
+            user_id = self.get_user_by_session()
+            #print("session:",user_id)
             if user_id:
                 user=get_user_details(user_id)
                 if user:
@@ -328,8 +376,8 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({'error': 'user details not found'}).encode())
         elif self.path=="/editdetails":
-            session_id = self.get_cookie('session_id') #session
-            user_id = get_user_by_session(session_id)
+            #session_id = self.get_cookie('session_id') #session
+            user_id = self.get_user_by_session()
             if user_id:
                 user=get_user_details(user_id)
                 if user:
@@ -350,8 +398,8 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({'error': 'user details not found'}).encode())
 
         elif self.path=="/edit":
-            session_id = self.get_cookie('session_id') #session
-            user_id = get_user_by_session(session_id)
+            #session_id = self.get_cookie('session_id') #session
+            user_id = self.get_user_by_session()
             if user_id:
                 self.send_response(200)
                 self.send_header('content-type','text/html')
@@ -363,8 +411,8 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': 'Unauthorized'}).encode())
         elif self.path=="/mybookings":
-            session_id = self.get_cookie('session_id') #session
-            user_id = get_user_by_session(session_id)
+            #session_id = self.get_cookie('session_id') #session
+            user_id = self.get_user_by_session()
             if user_id:
                   bookings=get_booking_details(user_id)
                 
@@ -390,8 +438,8 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({'error': 'booking details not found'}).encode())
         elif self.path=="/bookings":
-            session_id = self.get_cookie('session_id') #session
-            user_id = get_user_by_session(session_id)
+            #session_id = self.get_cookie('session_id') #session
+            user_id = self.get_user_by_session()
             if user_id:
                 self.send_response(200)
                 self.send_header('content-type','text/html')
@@ -487,16 +535,16 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(buses_list).encode())
 
         elif self.path == '/book':
-            session_id = self.get_cookie('session_id') #session
-            user_id = get_user_by_session(session_id)
+            #session_id = self.get_cookie('session_id') #session
+            user_id = self.get_user_by_session()
             if user_id:
                 data = json.loads(post_data)
                 bus_id = data['bus_id']
                 bus_details=get_bus_details(bus_id)
                 bus_name=bus_details[1]
                 route_id=bus_details[5]
-                route_start=bus_details[3]
-                route_end=bus_details[4]
+                route_start=bus_details[4]
+                route_end=bus_details[5]
                 no_of_pass=data['no_of_pass']
                 totalfare=data['total_fare']
                 travel_date=data['travel_date']
@@ -524,9 +572,10 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             
        
         elif self.path=='/logout':
-            session_id = self.get_cookie('session_id')
-            if session_id and session_id in SESSIONS:
-                del SESSIONS[session_id]
+            session_id = self.get_cookie()
+            sessions=get_current_user(session_id)
+            if session_id and sessions:
+                delete_session(session_id)
             cookie = http.cookies.SimpleCookie()
             cookie['session_id'] = ''
             cookie['session_id']['path'] = '/'
@@ -537,8 +586,8 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({'message': 'Logout successful'}).encode())
         elif self.path=='/editdetails':
-            session_id = self.get_cookie('session_id') #session
-            user_id = get_user_by_session(session_id)
+            #session_id = self.get_cookie('session_id') #session
+            user_id = self.get_user_by_session()
             if user_id:
                 name = data.get('name')
                 username = data.get('username')
@@ -591,8 +640,8 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': 'booking_id is required'}).encode())
                 return
-            session_id = self.get_cookie('session_id') #session
-            current_user_id = get_user_by_session(session_id)
+            #session_id = self.get_cookie('session_id') #session
+            current_user_id = self.get_user_by_session()
             user_id=get_user_from_booking(booking_id)
             if not user_id:
                 self.send_response(400)
@@ -621,8 +670,8 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path.startswith('/delete'):
             #data = json.loads(post_data)
             #user_id = data['user_id']
-            session_id = self.get_cookie('session_id') #session
-            user_id = get_user_by_session(session_id)
+            #session_id = self.get_cookie('session_id') #session
+            user_id = self.get_user_by_session()
             result=delete_user(user_id)
             if result:
                 self.send_response(200)
@@ -635,12 +684,28 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': 'Deletion not possible'}).encode())
 
-    def get_cookie(self, name):
-        if 'Cookie' in self.headers:
-            cookies = http.cookies.SimpleCookie(self.headers['Cookie'])
-            if name in cookies:
-                return cookies[name].value
+    def get_user_by_session(self):
+        session_id=self.get_cookie()
+        session=get_current_user(session_id)
+        if session:
+            user_id, expires_at = session
+            if datetime.now() < datetime.fromisoformat(expires_at):
+                return user_id
+
         return None
+    def get_cookie(self):
+        cookies = self.headers.get('Cookie')
+        if not cookies:
+            return None
+        cookies = cookies.split('; ')
+        session_id = None
+        for cookie in cookies:
+            if cookie.startswith('session_id='):
+                session_id = cookie.split('=')[1]
+                return session_id
+        if not session_id:
+            return None
+
 
 if __name__ == '__main__':
     httpd = http.server.HTTPServer(('localhost', 4443), RequestHandler)

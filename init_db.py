@@ -66,6 +66,13 @@ CREATE TABLE IF NOT EXISTS booking_details (
 )
 ''')
 
+c.execute('''CREATE TABLE IF NOT EXISTS sessions (
+    session_id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    expires_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)'''
+)
+
 # Trigger to update the updated_at column on row update
 c.execute('''
 CREATE TRIGGER IF NOT EXISTS update_users_updated_at
@@ -102,6 +109,8 @@ BEGIN
     UPDATE booking_details SET updated_at = CURRENT_TIMESTAMP WHERE id = old.id;
 END;
 ''')
+
+
 
 conn.commit()
 conn.close()
