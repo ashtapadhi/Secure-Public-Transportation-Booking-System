@@ -2,8 +2,6 @@ import http.server
 import ssl
 import json
 from urllib.parse import parse_qs, urlparse
-import jwt
-import datetime
 import hashlib
 import base64
 import os
@@ -12,7 +10,7 @@ import sqlite3
 import html
 import http.cookies 
 import uuid
-import requests
+import datetime
 from datetime import datetime
 from datetime import timedelta
 
@@ -29,9 +27,6 @@ def create_session(user_id):
     expiry = datetime.now() + timedelta(hours=1,)
     add_session(session_id,user_id,expiry)
     return session_id
-
-#def get_user_by_session(session_id):
-#    return SESSIONS.get(session_id)
 
 def hash_password(password):
     return base64.b64encode(hashlib.sha256(password.encode()).digest()).decode()
