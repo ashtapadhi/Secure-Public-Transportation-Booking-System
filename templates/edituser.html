@@ -16,13 +16,6 @@
     </form>
 
     <script>
-        // Function to get cookie value by name
-        function getCookie(name) {
-            const cookieValue = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-            return cookieValue ? cookieValue.pop() : '';
-        }
-
-        // Fetch user details and populate the form fields
         document.addEventListener('DOMContentLoaded', async function() {
             const response = await fetch('/editdetails', {
                 method: 'GET',
@@ -42,14 +35,14 @@
             }
         });
 
-        // Handle form submission
+    
         document.getElementById("editform").addEventListener("submit", async (event) => {
             event.preventDefault();
             const form = event.target;
             const formData = new FormData(form);
             const data = new URLSearchParams(formData);
 
-            // Validate phone number
+
             const phone = form.phone_number.value;
             const phoneRegex = /^\d{10}$/;
             if (!phoneRegex.test(phone)) {
@@ -57,9 +50,9 @@
                 return;
             }
 
-            // Send POST request to update user details
+     
             const response = await fetch(form.action, {
-                method: 'POST',
+                method: 'PUT',
                 body: data,
             });
 

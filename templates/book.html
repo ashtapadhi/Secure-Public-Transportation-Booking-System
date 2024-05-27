@@ -40,12 +40,11 @@
             const bus_id = urlParams.get('bus_id');
             console.log(bus_id);
 
-            // Fetch bus details using bus_id
-            //const token = localStorage.getItem('token');
+          
             const response = await fetch(`/busdetails?bus_id=${bus_id}`, {
                 method: 'GET',
                 headers: {
-                   // 'Authorization': `Bearer ${token}`,
+              
                     'Content-Type': 'application/json'
                 }
             });
@@ -55,8 +54,7 @@
                 document.getElementById('busname').textContent = `Bus Name: ${bus.bus_name}`;
                 document.getElementById('fare').textContent = `Fare per Passenger: ${bus.bus_fare}`;
                 document.getElementById('routes').textContent = `Route: ${bus.route_start} to ${bus.route_end}`;
-                
-                // Update fare dynamically
+         
                 document.getElementById('noofpass').addEventListener('input', function() {
                     const farePerPassenger = bus.bus_fare;
                     const numPassengers = parseInt(this.value, 10);
@@ -70,7 +68,7 @@
                 alert('Error fetching bus details');
             }
 
-            // Set minimum date to today
+   
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('traveldate').setAttribute('min', today);
         });
@@ -90,11 +88,11 @@
             }
 
             const bus_id = new URLSearchParams(window.location.search).get('bus_id');
-           // const token = localStorage.getItem('token');
+
            const bookingResponse = await fetch('/book', {
                 method: 'POST',
                 headers: {
-                    //'Authorization': `Bearer ${token}`,
+      
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
@@ -107,7 +105,7 @@
 
             if (bookingResponse.ok) {
                 alert('Booking successful!');
-                // Optionally redirect to another page or update UI
+         
                 window.location.href = '/bookings';
             } else {
                 alert('Error booking the bus.');

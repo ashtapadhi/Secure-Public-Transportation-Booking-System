@@ -19,7 +19,7 @@ This project is a secure public transportation booking system that allows users 
 - **Bus Search:** Users can search for available buses based on routes and travel dates.
 - **Booking:** Users can book tickets for available buses.
 - **Booking Management:** Users can view and cancel their bookings.
-- **Secure Transactions:** Ensures secure handling of user data and booking transactions.
+- **Secure Transactions:** Ensures secure handling of user data.
 
 ## Technologies Used
 
@@ -40,10 +40,19 @@ This project is a secure public transportation booking system that allows users 
 
 ```bash pip install -r requirements.txt```
 
+5. **Initialize database:**
+```bash python init_db.py```
 ## Usage
 
+- **Add route and bus details:**
+```bash python admin.py```
+use the menu driven program to enter bus details and route details.
+
+- **Run the application:**
+ ```bash pyhton server.py```
+
 - **Access the application:**
-Open a web browser and go to http://localhost:4443.
+Open a web browser and go to https://localhost:4443.
 
 - **Register and log in:**
 Create a new account or log in with your credentials.

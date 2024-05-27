@@ -28,7 +28,7 @@
             if (booking_response.ok) {
     const bookings = await booking_response.json();
     const bookingList = document.getElementById('bookinglist');
-    bookingList.innerHTML = ''; // Clear previous results
+    bookingList.innerHTML = ''; 
 
     bookings.forEach(booking => {
         const listItem = document.createElement('li');
@@ -57,7 +57,7 @@
 
                 if (cancelResponse.ok) {
                     alert('Booking cancelled successfully.');
-                    listItem.remove(); // Remove the cancelled booking from the list
+                    listItem.remove(); 
                 } else {
                     alert('Failed to cancel booking.');
                 }

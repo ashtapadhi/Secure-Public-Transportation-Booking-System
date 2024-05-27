@@ -11,7 +11,6 @@
         </div>
     <div class="headings">
         <h3>Find Routes!</h3>
-        <p id="welcomeMessage"></p>
     </div>
     
     <div class="Form_container">
@@ -50,9 +49,7 @@ function loadMenu() {
             }
         });
         if (response.ok) {
-            // Optionally, clear any client-side storage
-            // localStorage.removeItem('token');
-            // Redirect to the login page
+ 
             window.location.href = '/';
         } else {
             alert('Logout failed');
@@ -67,7 +64,7 @@ function getCookie(name) {
             return cookieValue ? cookieValue.pop() : '';
         }
 
-        // Get the username cookie value
+
         const username = getCookie('session_id');
         console.log("cookie value",username)
 
@@ -83,16 +80,14 @@ function getCookie(name) {
             const response = await fetch('/dashboard', {
                 method: 'GET',
                 headers: {
-                    //'Authorization': `Bearer ${token}`,
+            
                     'Content-Type': 'application/json'
                 }
             });
             if (response.ok) {
                 const data = await response.json();
-                document.getElementById('welcomeMessage').textContent = 'Welcome, ' + username;
             } else {
                 alert('Unauthorized');
-                //localStorage.removeItem('token');
                 window.location.href = '/';
             }
         });
@@ -107,7 +102,6 @@ function getCookie(name) {
             const bus_response = await fetch('/buses', {
                 method: 'POST',
                 headers: {
-                   // 'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ from, to })
@@ -116,7 +110,7 @@ function getCookie(name) {
             if (bus_response.ok) {
                 const buses = await bus_response.json();
                 const busList = document.getElementById('busList');
-                busList.innerHTML = ''; // Clear previous results
+                busList.innerHTML = ''; 
                 buses.forEach(bus => {
                     const listItem = document.createElement('li');
                     listItem.innerHTML = `Bus Name: <strong>${bus.bus_name}</strong>&emsp;Fare: <strong>${bus.bus_fare}</strong>&emsp;Available Seats: <strong>${bus.available_seats}</strong>`;
@@ -130,10 +124,8 @@ function getCookie(name) {
                     bookButton.addEventListener('click', () => {
                 window.location.href = `/bookpage?bus_id=${bus.id}`; // Redirect to booking page with bus ID
             });
-        // Append the button to the list item
+  
         listItem.appendChild(bookButton);
-
-        // Append the list item to the bus list
         busList.appendChild(listItem);
                 });
             } else {
