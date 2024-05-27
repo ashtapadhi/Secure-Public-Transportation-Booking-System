@@ -10,8 +10,7 @@ This project is a secure public transportation booking system that allows users 
 - [Usage](#usage)
 - [API Endpoints](#api-endpoints)
 - [Security Measures](#security-measures)
-- [Contributing](#contributing)
-- [License](#license)
+
 
 ## Features
 
@@ -31,5 +30,65 @@ This project is a secure public transportation booking system that allows users 
 ## Installation
 
 1. **Clone the repository:**
-   ```bash
+   ```bash https://github.com/ashtapadhi/SPT-Ticket-Booking.git```
+   
+2. **Set up a virtual environment:**
+```bash python -m venv venv```
+  ```bash source venv/bin/activate```  # On Windows, use `venv\Scripts\activate`
+
+4. **Install dependencies:**
+
+```bash pip install -r requirements.txt```
+
+## Usage
+
+- **Access the application:**
+Open a web browser and go to http://localhost:4443.
+
+- **Register and log in:**
+Create a new account or log in with your credentials.
+
+- **Search for buses:**
+Use the dashboard to search for available buses based on your travel route and date.
+
+- **Book a ticket:**
+Select a bus from the search results and book a ticket.
+
+- **View and manage bookings:**
+View your bookings and cancel them if necessary.
+
+- **View and manage user profile:**
+View user profile and edit details if necessary
+
+- **Delete account:**
+Open profile and delete account if necessary
+
+- **Logout:**
+Users can logout after use
+
+
+## API Endpoints
+
+- **User Registration:** POST /register
+- **User Login:** POST /login
+- **User Logout:** POST /logout
+- **Delete Account:** DELETE /delete
+
+- **Get User Profile:** GET /profile
+- **Update User Profile:** PUT /edit_details
+- **Search Buses:** POST /search
+- **Book a Ticket:** POST /book
+- **View Bookings:** GET /bookings
+- **Cancel Booking:** DELETE /cancel
+
+## Security Measures
+
+- **HTTPS:** Ensures secure communication between the client and server.
+- **Password Hashing:** User passwords are hashed before storing in the database.
+- **Session Expiry:** Sessions are validated against expiry time during requests.
+
+
+
+
+
    
