@@ -20,7 +20,7 @@ from datetime import timedelta
 load_dotenv()
 
 SECRET_KEY = os.environ.get('SECRET_KEY')
-SESSIONS = {}
+
 if not SECRET_KEY:
     raise ValueError("No SECRET_KEY set for application")
 
@@ -28,7 +28,6 @@ def create_session(user_id):
     session_id = str(uuid.uuid4())
     expiry = datetime.now() + timedelta(hours=1,)
     add_session(session_id,user_id,expiry)
-    SESSIONS[session_id] = user_id
     return session_id
 
 #def get_user_by_session(session_id):
@@ -36,23 +35,6 @@ def create_session(user_id):
 
 def hash_password(password):
     return base64.b64encode(hashlib.sha256(password.encode()).digest()).decode()
-
-'''def create_token(username):
-    payload = {
-       'username': username,
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)
-    }
-    token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
-    return token
-
-def decode_token(token):
-    try:
-        decoded = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        return decoded
-    except jwt.ExpiredSignatureError:
-        return None
-    except jwt.InvalidTokenError:
-        return None'''
     
 def sanitize_input(data):
     return {k: html.escape(v[0]) for k, v in data.items()}
@@ -93,7 +75,7 @@ def delete_user(user_id):
         conn.close()
         return False
 
-# Utility function to add user to the database
+
 def add_user(name, username, password, email, phonenumber):
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
@@ -146,6 +128,7 @@ def get_bus_details(bus_id):
     bus = c.fetchone()
     conn.close()
     return bus
+
 def booked_seats(bus_id,date):
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
@@ -266,7 +249,6 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(load_template('register.html').encode())
         elif self.path == '/dashboard':
-            #session_id = self.get_cookie('session_id') #session
             user_id = self.get_user_by_session()
             print("user ", user_id)
             if user_id:
@@ -279,26 +261,6 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': 'Unauthorized'}).encode())
-            '''token = self.headers.get('Authorization') #code for token handling
-            if token:
-                token = token.split(' ')[1]
-                decoded_token = decode_token(token)
-                if decoded_token:
-                    self.send_response(200)
-                    self.send_header('Content-type', 'application/json')
-                    self.end_headers()
-                    username = decoded_token['username']
-                    self.wfile.write(json.dumps({'username': username}).encode())
-                    return
-            self.send_response(401)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'error': 'Unauthorized'}).encode())'''
-            '''self.send_response(200) #without token
-            self.send_header('Content-type','text/html')
-            self.end_headers()
-            self.wfile.write(load_template('dashboard.html').encode())
-            return'''
         elif self.path.startswith('/bookpage'):
             bus_id = self.path.split('bus_id=')[-1]
             self.send_response(200)
@@ -308,7 +270,6 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             booking_page = load_template('book.html').replace('{{bus_id}}', bus_id)
             self.wfile.write(booking_page.encode())
         elif self.path=='/profile':
-            #session_id = self.get_cookie('session_id') #session
             user_id = self.get_user_by_session()
             if user_id:
                 self.send_response(200)
@@ -352,15 +313,12 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             content_type = 'text/css' if path.endswith('.css') else 'application/octet-stream'
             self.serve_static_file(path[1:], content_type)
         elif self.path=='/userdetails':
-            #session_id = self.get_cookie('session_id') #session
             user_id = self.get_user_by_session()
-            #print("session:",user_id)
             if user_id:
                 user=get_user_details(user_id)
                 if user:
                     print("nam: ",user[2])
                     self.send_response(200)
-                    #self.send_header('content-type','text/html')
                     self.send_header('Content-type', 'application/json')
                     self.end_headers()
                     self.wfile.write(json.dumps({
@@ -370,19 +328,16 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
                         'phone_number': user[3]
                     }).encode())
                     return
-                    #self.wfile.write(load_template('profile.html').encode())
             self.send_response(404)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({'error': 'user details not found'}).encode())
         elif self.path=="/editdetails":
-            #session_id = self.get_cookie('session_id') #session
             user_id = self.get_user_by_session()
             if user_id:
                 user=get_user_details(user_id)
                 if user:
                     self.send_response(200)
-                    #self.send_header('content-type','text/html')
                     self.send_header('Content-type', 'application/json')
                     self.end_headers()
                     self.wfile.write(json.dumps({
@@ -398,7 +353,6 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({'error': 'user details not found'}).encode())
 
         elif self.path=="/edit":
-            #session_id = self.get_cookie('session_id') #session
             user_id = self.get_user_by_session()
             if user_id:
                 self.send_response(200)
@@ -411,7 +365,6 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': 'Unauthorized'}).encode())
         elif self.path=="/mybookings":
-            #session_id = self.get_cookie('session_id') #session
             user_id = self.get_user_by_session()
             if user_id:
                   bookings=get_booking_details(user_id)
@@ -424,21 +377,16 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
                         'traveldate': booking[6],
                         'noofseats': booking[7],
                         'totalfare':booking[8]} for booking in bookings]
-               
                     self.send_response(200)
-                    #self.send_header('content-type','text/html')
                     self.send_header('Content-type', 'application/json')
                     self.end_headers()
-                    self.wfile.write(json.dumps(booking_list).encode())
-                    
+                    self.wfile.write(json.dumps(booking_list).encode())          
                     return
-                    #self.wfile.write(load_template('profile.html').encode())
             self.send_response(404)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({'error': 'booking details not found'}).encode())
         elif self.path=="/bookings":
-            #session_id = self.get_cookie('session_id') #session
             user_id = self.get_user_by_session()
             if user_id:
                 self.send_response(200)
@@ -477,14 +425,8 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.send_header('Set-Cookie', cookie.output(header='', sep=''))
-                #self.send_header('Set-Cookie', f'session_id={session_id}; HttpOnly')
                 self.end_headers()
                 self.wfile.write(json.dumps({'message': 'Login successful'}).encode())
-                '''token = create_token(username) #token
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({'token': token}).encode())'''
             else:
                 self.send_response(401)
                 self.send_header('Content-type', 'application/json')
@@ -510,13 +452,6 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
                self.send_header('Set-Cookie', cookie.output(header='', sep=''))
                self.end_headers()
                self.wfile.write(json.dumps({'message': 'Registration successful'}).encode())
-
-               '''add_user(name, username, hash_password(password), email, phonenumber) #token
-                token = create_token(username)
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({'token': token}).encode())'''
             else:
                 self.send_response(409)
                 self.send_header('Content-type', 'application/json')
@@ -535,7 +470,6 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(buses_list).encode())
 
         elif self.path == '/book':
-            #session_id = self.get_cookie('session_id') #session
             user_id = self.get_user_by_session()
             if user_id:
                 data = json.loads(post_data)
@@ -549,7 +483,6 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
                 totalfare=data['total_fare']
                 travel_date=data['travel_date']
                 add_booking(user_id,bus_id,route_id,bus_name,route_start,route_end,travel_date,no_of_pass,totalfare)
-                # Add booking logic here
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
@@ -559,16 +492,7 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': 'Unauthorized'}).encode())
-            '''token = self.headers.get('Authorization').split(' ')[1] #token
-            decoded_token = decode_token(token)
-            if decoded_token:
-                data = json.loads(post_data)
-                bus_id = data['bus_id']
-                # Add booking logic here
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({'message': 'Booking successful'}).encode())'''
+
             
        
         elif self.path=='/logout':
@@ -585,41 +509,7 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Set-Cookie', cookie.output(header='', sep=''))
             self.end_headers()
             self.wfile.write(json.dumps({'message': 'Logout successful'}).encode())
-        elif self.path=='/editdetails':
-            #session_id = self.get_cookie('session_id') #session
-            user_id = self.get_user_by_session()
-            if user_id:
-                name = data.get('name')
-                username = data.get('username')
-                email = data.get('email')
-                phonenumber = data.get('phone_number')
-                user=get_user_details(user_id)
-                oldusername= user[1]
-                if oldusername!=username:
-
-
-                    if not get_user(username):
-                        update_user(user_id,name,username,email,phonenumber)
-                        self.send_response(200)
-                        self.send_header('conten-type','application/json')
-                        self.end_headers()
-                        self.wfile.write(json.dumps({'message': 'Registration successful'}).encode())
-                    else:
-                        self.send_response(409)
-                        self.send_header('Content-type', 'application/json')
-                        self.end_headers()
-                        self.wfile.write(json.dumps({'error': 'Username already taken, Please try another username'}).encode())
-                else:
-                    update_user(user_id,name,username,email,phonenumber)
-                    self.send_response(200)
-                    self.send_header('conten-type','application/json')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({'message': 'Registration successful'}).encode())
-            else:
-                self.send_response(401)
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({'error': 'Invalid session'}).encode())
+     
 
         else:
             self.send_response(401)
@@ -640,7 +530,6 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': 'booking_id is required'}).encode())
                 return
-            #session_id = self.get_cookie('session_id') #session
             current_user_id = self.get_user_by_session()
             user_id=get_user_from_booking(booking_id)
             if not user_id:
@@ -668,9 +557,6 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({'error': 'cancellation not possible'}).encode())
             
         elif self.path.startswith('/delete'):
-            #data = json.loads(post_data)
-            #user_id = data['user_id']
-            #session_id = self.get_cookie('session_id') #session
             user_id = self.get_user_by_session()
             result=delete_user(user_id)
             if result:
@@ -683,6 +569,43 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': 'Deletion not possible'}).encode())
+    def do_PUT(self):
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length)
+        raw_data = parse_qs(post_data.decode())
+        data = sanitize_input(raw_data)
+        if self.path=='/editdetails':
+            user_id = self.get_user_by_session()
+            if user_id:
+                name = data.get('name')
+                username = data.get('username')
+                email = data.get('email')
+                phonenumber = data.get('phone_number')
+                user=get_user_details(user_id)
+                oldusername= user[1]
+                if oldusername!=username:
+                    if not get_user(username):
+                        update_user(user_id,name,username,email,phonenumber)
+                        self.send_response(200)
+                        self.send_header('conten-type','application/json')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({'message': 'Registration successful'}).encode())
+                    else:
+                        self.send_response(409)
+                        self.send_header('Content-type', 'application/json')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({'error': 'Username already taken, Please try another username'}).encode())
+                else:
+                    update_user(user_id,name,username,email,phonenumber)
+                    self.send_response(200)
+                    self.send_header('conten-type','application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'message': 'Registration successful'}).encode())
+            else:
+                self.send_response(401)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': 'Invalid session'}).encode())
 
     def get_user_by_session(self):
         session_id=self.get_cookie()
