@@ -30,26 +30,26 @@ This project is a secure public transportation booking system that allows users 
 ## Installation
 
 1. **Clone the repository:**
-   ```bash https://github.com/ashtapadhi/SPT-Ticket-Booking.git```
+   ```https://github.com/ashtapadhi/SPT-Ticket-Booking.git```
    
 2. **Set up a virtual environment:**
-```bash python -m venv venv```
-  ```bash source venv/bin/activate```  # On Windows, use `venv\Scripts\activate`
+```python -m venv venv```
+  ```source venv/bin/activate```  # On Windows, use `venv\Scripts\activate`
 
 4. **Install dependencies:**
 
-```bash pip install -r requirements.txt```
+```pip install -r requirements.txt```
 
 5. **Initialize database:**
-```bash python init_db.py```
+```python init_db.py```
 ## Usage
 
 - **Add route and bus details:**
-```bash python admin.py```
+```python admin.py```
 use the menu driven program to enter bus details and route details.
 
 - **Run the application:**
- ```bash pyhton server.py```
+ ```pyhton server.py```
 
 - **Access the application:**
 Open a web browser and go to https://localhost:4443.
