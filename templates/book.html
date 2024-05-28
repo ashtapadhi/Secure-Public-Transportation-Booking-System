@@ -40,11 +40,12 @@
             const urlParams = new URLSearchParams(window.location.search);
             const bus_id = urlParams.get('bus_id');
             const travel_date=urlParams.get('travel_date');
+            console.log(travel_date)
             document.getElementById('traveldate').value=travel_date;
             console.log(bus_id);
-
+            
           
-            const response = await fetch(`/busdetails?bus_id=${bus_id}&travel_date=${traveldate}`, {
+            const response = await fetch(`/busdetails?bus_id=${bus_id}&travel_date=${travel_date}`, {
                 method: 'GET',
                 headers: {
               

@@ -289,8 +289,8 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': 'Unauthorized'}).encode())
         elif self.path.startswith('/bookpage'):
-            bus_id = self.path.split('bus_id=')[-1]
-            travel_date=self.path.split('travel_date')[-1]
+            bus_id = query.get('bus_id', [None])[0]
+            travel_date = query.get('travel_date', [None])[0]
             self.send_response(200)
             print("ok")
             self.send_header('content-type','text/html')
@@ -316,6 +316,7 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path.startswith('/busdetails'):
             bus_id = query.get('bus_id', [None])[0]
             travel_date=query.get('travel_date', [None])[0]
+            print(travel_date)
             if bus_id:
                 bus = get_bus_details(bus_id)
                 print("travel__date",travel_date)
