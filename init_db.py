@@ -73,6 +73,16 @@ c.execute('''CREATE TABLE IF NOT EXISTS sessions (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)'''
 )
 
+c.execute('''
+CREATE TABLE IF NOT EXISTS bus_availability (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bus_id INTEGER NOT NULL,
+    travel_date DATE NOT NULL,
+    available_seats INTEGER NOT NULL,
+    FOREIGN KEY (bus_id) REFERENCES buses(id) ON DELETE CASCADE,
+    UNIQUE (bus_id, travel_date)
+)
+''')
 # Trigger to update the updated_at column on row update
 c.execute('''
 CREATE TRIGGER IF NOT EXISTS update_users_updated_at
