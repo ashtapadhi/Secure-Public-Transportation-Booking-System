@@ -40,13 +40,17 @@ This project is a secure public transportation booking system that allows users 
 
 ```pip install -r requirements.txt```
 
-5. **Initialize database:**
+5. **Generate certificate and key:**
+
+```openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365```
+
+6. **Initialize database:**
 ```python init_db.py```
 ## Usage
 
 - **Add route and bus details:**
 ```python admin.py```
-use the menu driven program to enter bus details and route details.
+use the menu-driven program to enter bus details and route details.
 
 - **Run the application:**
  ```pyhton server.py```
@@ -73,7 +77,7 @@ View user profile and edit details if necessary
 Open profile and delete account if necessary
 
 - **Logout:**
-Users can logout after use
+Users can logout after using the system
 
 
 ## API Endpoints
