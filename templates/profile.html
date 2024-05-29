@@ -1,72 +1,72 @@
 <!DOCTYPE html>
+<html>
 <head>
-    <title>
-        profile
-    </title>
+    <title>Profile</title>
     <link rel="stylesheet" type="text/css" href="static/css/style.css">
 </head>
 <body>
-   <center>
-    <div id="menuContainer"> </div>
-    <p id="user"></p>
-    <div class="headings">
-    <h3>Profile</h3></div>
-    <div class="userdetails">
-        <table class="user-table">
-            <tr>
-                <th>Name</th>
-                <td id="name"></td>
-            </tr>
-            <tr>
-                <th>Username</th>
-                <td id="username"></td>
-            </tr>
-            <tr>
-                <th>Email</th>
-                <td id="email"></td>
-               
-            </tr>
-            <tr>
-                <th>Phone</th>
-                <td id="phone"></td>
-            </tr>
-                
-            
-        </table>
-        <button id="deleteAccountButton">Delete Account</button>
-        <a href="/edit"><button id="editAccountButton">Edit Account</button> </a>
-    </div>
-   
-   
-    
-</center>
+    <center>
+        <!-- Menu container to load menu -->
+        <div id="menuContainer"></div>
 
+        <!-- Heading for the profile section -->
+        <div class="headings">
+            <h3>Profile</h3>
+        </div>
+
+        <!-- User details section with a table -->
+        <div class="userdetails">
+            <table class="user-table">
+                <tr>
+                    <th>Name</th>
+                    <td id="name"></td>
+                </tr>
+                <tr>
+                    <th>Username</th>
+                    <td id="username"></td>
+                </tr>
+                <tr>
+                    <th>Email</th>
+                    <td id="email"></td>
+                </tr>
+                <tr>
+                    <th>Phone</th>
+                    <td id="phone"></td>
+                </tr>
+            </table>
+
+            <!-- Button to delete the account -->
+            <button id="deleteAccountButton">Delete Account</button>
+
+            <!-- Button to edit the account -->
+            <a href="/edit"><button id="editAccountButton">Edit Account</button></a>
+        </div>
+    </center>
+
+    <!-- JavaScript section -->
     <script>
+        // Function to handle logout
         async function logout() {
-    try {
-        const response = await fetch('/logout', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
+            // Send logout request to the server
+            try {
+                const response = await fetch('/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (response.ok) {
+                    window.location.href = '/'; // Redirect to the homepage after logout
+                } else {
+                    alert('Logout failed');
+                }
+            } catch (error) {
+                console.error('Error during logout:', error);
+                alert('An error occurred. Please try again.');
             }
-        });
-        if (response.ok) {
-            window.location.href = '/';
-        } else {
-            alert('Logout failed');
-        }
-    } catch (error) {
-        console.error('Error during logout:', error);
-        alert('An error occurred. Please try again.');
-    }
-    }
-        function getCookie(name) {
-            const cookieValue = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-            return cookieValue ? cookieValue.pop() : '';
         }
 
-   
-        const username = getCookie('session_id');
+        // Load menu from menu.html file
         function loadMenu() {
             fetch('menu.html')
                 .then(response => response.text())
@@ -74,45 +74,45 @@
                     document.getElementById('menuContainer').innerHTML = data;
                 });
         }
-       
-       
+
+        // Load user details when the document is loaded
         document.addEventListener('DOMContentLoaded', async function() {
-            loadMenu();
+            loadMenu(); // Load the menu
             const response = await fetch('/userdetails', {
                 method: 'GET',
                 headers: {
-               
                     'Content-Type': 'application/json'
                 }
             });
             if (response.ok) {
+                // Display user details in the profile
                 const user = await response.json();
                 document.getElementById('name').textContent = `${user.name}`;
                 document.getElementById('username').textContent = `${user.username}`;
                 document.getElementById('email').textContent = `${user.email}`;
                 document.getElementById('phone').textContent = `${user.phone_number} `;
-            document.getElementById("user").innerHTML=username;
-            console.log(username);}
-            else{
-                alert('Error fetching bus details');
+            } else {
+                alert('Error fetching user details');
             }
-
         });
-        document.getElementById('deleteAccountButton').addEventListener('click', async function() {
-            if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
 
-                const username=document.getElementById("username").value;
+        // Event listener for delete account button
+        document.getElementById('deleteAccountButton').addEventListener('click', async function() {
+            // Confirm deletion before proceeding
+            if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+                // Send delete account request to the server
+                const username = document.getElementById("username").value;
                 const response = await fetch('/delete_account', {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({username})  
+                    body: JSON.stringify({ username })
                 });
 
                 if (response.ok) {
+                    // Display success message and redirect to the homepage
                     alert('Account deleted successfully.');
-                    localStorage.removeItem('token');
                     window.location.href = '/';
                 } else {
                     alert('Error deleting account.');

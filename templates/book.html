@@ -1,33 +1,40 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Book Tickets</title>
     <link rel="stylesheet" type="text/css" href="static/css/style.css">
 </head>
 <body>
     <center>
-        <div id="menuContainer">
-        
-        </div>
+        <!-- Menu container -->
+        <div id="menuContainer"></div>
+
+        <!-- Bus details section -->
         <div id="busdetails" class="headings">
             <h3 id="busname"></h3>
             <h5 id="fare"></h5>
             <h6 id="routes"></h6>
             <h6 id="available_seats"></h6>
         </div>
+
+        <!-- Form for booking tickets -->
         <div class="Form_container">
-        <form id="booktickets" class="bussearchandbookform" method="POST">
-            <label>Number of Passengers</label>
-            <input type="number" id="noofpass" min="1" required>
-            <label>Date of Travel</label>
-            <input type="date" id="traveldate" disabled>
-            <label>Total fare</label>
-            <input type="text" id="totalfare" disabled>
-            <button type="submit">Book</button>
-        </form>
+            <form id="booktickets" class="bussearchandbookform" method="POST">
+                <label for="noofpass">Number of Passengers</label>
+                <input type="number" id="noofpass" min="1" required>
+                <label for="traveldate">Date of Travel</label>
+                <input type="date" id="traveldate" disabled><br>
+                <label for="totalfare">Total fare</label>
+                <input type="text" id="totalfare" disabled>
+                <button type="submit">Book</button>
+            </form>
         </div>
     </center>
+    <!-- JavaScript section -->
     <script>
+        // Function to load menu from external file
         function loadMenu() {
             fetch('menu.html')
                 .then(response => response.text())
@@ -35,31 +42,32 @@
                     document.getElementById('menuContainer').innerHTML = data;
                 });
         }
-    
+
+        // Event listener when the document is loaded
         document.addEventListener('DOMContentLoaded', async function() {
+            // Fetching URL parameters for bus ID and travel date
             const urlParams = new URLSearchParams(window.location.search);
             const bus_id = urlParams.get('bus_id');
-            const travel_date=urlParams.get('travel_date');
-            console.log(travel_date)
-            document.getElementById('traveldate').value=travel_date;
-            console.log(bus_id);
-            
-          
+            const travel_date = urlParams.get('travel_date');
+            document.getElementById('traveldate').value = travel_date;
+
+            // Fetching bus details based on bus ID and travel date
             const response = await fetch(`/busdetails?bus_id=${bus_id}&travel_date=${travel_date}`, {
                 method: 'GET',
                 headers: {
-              
                     'Content-Type': 'application/json'
                 }
             });
-            
+
             if (response.ok) {
                 const bus = await response.json();
+                // Updating bus details in the HTML
                 document.getElementById('busname').textContent = `Bus Name: ${bus.bus_name}`;
                 document.getElementById('fare').textContent = `Fare per Passenger: ${bus.bus_fare}`;
                 document.getElementById('routes').textContent = `Route: ${bus.route_start} to ${bus.route_end}`;
                 document.getElementById('available_seats').textContent = `Available Seats: ${bus.available_seats}`;
-         
+
+                // Calculating total fare based on number of passengers
                 document.getElementById('noofpass').addEventListener('input', function() {
                     const farePerPassenger = bus.bus_fare;
                     const numPassengers = parseInt(this.value, 10);
@@ -72,21 +80,14 @@
             } else {
                 alert('Error fetching bus details');
             }
-
-   
-          
-           
         });
 
+        // Event listener for booking form submission
         document.getElementById('booktickets').addEventListener('submit', async function(event) {
             event.preventDefault();
             const no_of_pass = document.getElementById('noofpass').value;
             if (no_of_pass < 1) {
                 alert("Choose a valid number of passengers");
-                return;
-            }
-            if (no_of_pass > available_seats){
-                alert("Selected number of seats are not available");
                 return;
             }
 
@@ -98,10 +99,10 @@
 
             const bus_id = new URLSearchParams(window.location.search).get('bus_id');
 
-           const bookingResponse = await fetch('/book', {
+            // Sending booking request to the server
+            const bookingResponse = await fetch('/book', {
                 method: 'POST',
                 headers: {
-      
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
@@ -114,7 +115,6 @@
 
             if (bookingResponse.ok) {
                 alert('Booking successful!');
-         
                 window.location.href = '/bookings';
             } else {
                 alert('Error booking the bus.');

@@ -6,37 +6,45 @@
 </head>
 <body>
     <center>
-        <div id="menuContainer">
-        
+        <!-- Container for the menu -->
+        <div id="menuContainer"></div>
+
+        <!-- Heading for the dashboard -->
+        <div class="headings">
+            <h3>Find Routes!</h3>
         </div>
-    <div class="headings">
-        <h3>Find Routes!</h3>
-    </div>
-    
-    <div class="Form_container">
-        <form id="searchbus" class="bussearchandbookform" method="POST">
-            <label>From</label><input type="text" id="from" name="from" required>
-            <label>To</label><input type="text" id="to" name="to" required>
-            <label>Date of Travel</label><input type="date" id="dateoftravel" name="dateoftravel" required>
-            <button type="submit">Search</button>
-        </form>
-    </div>
-    <div class="headings">
-        <h3 id="buslistheading"></h3>
-        <ul id="busList" style="list-style-type:none;"></ul>
-      
-    </div>
-</center>
+        
+        <!-- Form for searching buses -->
+        <div class="Form_container">
+            <form id="searchbus" class="bussearchandbookform" method="POST">
+                <label>From</label>
+                <input type="text" id="from" name="from" required>
+                <label>To</label>
+                <input type="text" id="to" name="to" required>
+                <label>Date of Travel</label>
+                <input type="date" id="dateoftravel" name="dateoftravel" required>
+                <button type="submit">Search</button>
+            </form>
+        </div>
+
+        <!-- Heading for available buses -->
+        <div class="headings">
+            <h3 id="buslistheading"></h3>
+            <ul id="busList" style="list-style-type:none;"></ul>
+        </div>
+    </center>
 
     <script>
-
-function loadMenu() {
+        // Function to load the menu from an external file
+        function loadMenu() {
             fetch('menu.html')
                 .then(response => response.text())
                 .then(data => {
                     document.getElementById('menuContainer').innerHTML = data;
                 });
         }
+
+        // Function to set the minimum travel date to the current date
         function setMinTravelDate() {
             const dateInput = document.getElementById('dateoftravel');
             const today = new Date();
@@ -51,105 +59,54 @@ function loadMenu() {
             dateInput.setAttribute('min', minDate);
         }
 
+        // Event listener for when the document is fully loaded
         document.addEventListener('DOMContentLoaded', function() {
-            loadMenu();
-            setMinTravelDate();
-        });
-        async function logout() {
-    try {
-        const response = await fetch('/logout', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-        if (response.ok) {
- 
-            window.location.href = '/';
-        } else {
-            alert('Logout failed');
-        }
-    } catch (error) {
-        console.error('Error during logout:', error);
-        alert('An error occurred. Please try again.');
-    }
-}
-function getCookie(name) {
-            const cookieValue = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-            return cookieValue ? cookieValue.pop() : '';
-        }
-
-
-        const username = getCookie('session_id');
-        console.log("cookie value",username)
-
-        document.addEventListener('DOMContentLoaded', async function() {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('traveldate').setAttribute('min', today);
-            const token = getCookie('session_id');
-            console.log(token)
-            if (!token) {
-                window.location.href = '/';
-                return;
-            }
-            const response = await fetch('/dashboard', {
-                method: 'GET',
-                headers: {
-            
-                    'Content-Type': 'application/json'
-                }
-            });
-            if (response.ok) {
-                const data = await response.json();
-            } else {
-                alert('Unauthorized');
-                window.location.href = '/';
-            }
+            loadMenu(); // Load the menu
+            setMinTravelDate(); // Set the minimum travel date
         });
 
+        // Event listener for submitting the search bus form
         document.getElementById('searchbus').addEventListener("submit", async function(event){
-            event.preventDefault();
+            event.preventDefault(); // Prevent the default form submission behavior
             const to = document.getElementById('to').value;
             const from = document.getElementById('from').value;
-            const traveldate=document.getElementById('dateoftravel').value;
+            const traveldate = document.getElementById('dateoftravel').value;
             const token = localStorage.getItem('token');
-            document.getElementById('buslistheading').innerHTML="Available Buses"
 
+            // Fetch buses based on search criteria
             const bus_response = await fetch('/buses', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ from, to, traveldate})
+                body: JSON.stringify({ from, to, traveldate })
             });
 
             if (bus_response.ok) {
                 const buses = await bus_response.json();
                 const busList = document.getElementById('busList');
-                const traveldate=document.getElementById('dateoftravel').value;
-                busList.innerHTML = ''; 
+                busList.innerHTML = ''; // Clear existing bus list
+                document.getElementById('buslistheading').innerHTML = "Available Buses";
+
+                // Iterate through retrieved buses and display them
                 buses.forEach(bus => {
                     const listItem = document.createElement('li');
                     listItem.innerHTML = `Bus Name: <strong>${bus.bus_name}</strong>&emsp;Fare: <strong>${bus.bus_fare}</strong>&emsp;Available Seats: <strong>${bus.available_seats}</strong>`;
 
-
-       
+                    // Create a button to book the bus
                     const bookButton = document.createElement('button');
                     bookButton.textContent = 'Book';
-        
-       
                     bookButton.addEventListener('click', () => {
-                        window.location.href = `/bookpage?bus_id=${bus.id}&travel_date=${traveldate}`; // Redirect to booking page with bus ID
-            });
-  
-        listItem.appendChild(bookButton);
-        busList.appendChild(listItem);
+                        // Redirect to booking page with bus ID and travel date
+                        window.location.href = `/bookpage?bus_id=${bus.id}&travel_date=${traveldate}`;
+                    });
+                    listItem.appendChild(bookButton); // Append the book button to the list item
+                    busList.appendChild(listItem); // Append the list item to the bus list
                 });
             } else {
                 alert('Error fetching buses');
             }
         });
-        
     </script>
 </body>
 </html>

@@ -5,17 +5,23 @@
     <link rel="stylesheet" type="text/css" href="static/css/style.css">
 </head>
 <body>
-    <h3>Edit Profile</h3>
-    <form id="editform" class="lrforms" action="/editdetails" method="POST">
-        <label>Name</label><input type="text" id="name" name="name" required>
-        <label>Username</label><input type="text" id="username" name="username" required>
-        <label>Email</label><input type="email" id="email" name="email" required>
-        <label>Phone Number</label><input type="tel" id="phone_number" name="phone_number" required>
-        <button type="submit">Change Details</button>
-        <a href="/profile"><button>Back</button></a>
-    </form>
-
+    <center>
+        <!-- Heading for the edit profile section -->
+        <div class="headings">
+            <h3>Edit Profile</h3>
+        </div>
+        <!-- Form for editing user details -->
+        <form id="editform" class="lrforms" action="/editdetails" method="POST">
+            <label>Name</label><input type="text" id="name" name="name" required>
+            <label>Username</label><input type="text" id="username" name="username" required>
+            <label>Email</label><input type="email" id="email" name="email" required>
+            <label>Phone Number</label><input type="tel" id="phone_number" name="phone_number" required>
+            <button type="submit">Change Details</button>
+            <a href="/profile"><button>Back</button></a>
+        </form>
+    </center>
     <script>
+        // Fetch user details and populate the form fields when the document is loaded
         document.addEventListener('DOMContentLoaded', async function() {
             const response = await fetch('/editdetails', {
                 method: 'GET',
@@ -35,14 +41,14 @@
             }
         });
 
-    
+        // Handle form submission for editing user details
         document.getElementById("editform").addEventListener("submit", async (event) => {
             event.preventDefault();
             const form = event.target;
             const formData = new FormData(form);
             const data = new URLSearchParams(formData);
 
-
+            // Validate phone number format
             const phone = form.phone_number.value;
             const phoneRegex = /^\d{10}$/;
             if (!phoneRegex.test(phone)) {
@@ -50,7 +56,7 @@
                 return;
             }
 
-     
+            // Send PUT request to update user details
             const response = await fetch(form.action, {
                 method: 'PUT',
                 body: data,

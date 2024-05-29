@@ -1,11 +1,12 @@
 import sqlite3
-import json
 
+
+#Connection with Database
 conn = sqlite3.connect('database.db')
 conn.execute("PRAGMA foreign_keys = ON")
 c = conn.cursor()
 
-# Create table
+# Create table users
 c.execute('''
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,6 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
 )
 ''')
 
+# Create table routes
 c.execute(''' 
 CREATE TABLE IF NOT EXISTS routes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,6 +34,7 @@ CREATE TABLE IF NOT EXISTS routes (
 )
 ''')
 
+# Create table buses
 c.execute('''
 CREATE TABLE IF NOT EXISTS buses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,6 +49,7 @@ CREATE TABLE IF NOT EXISTS buses (
 )
 ''')
 
+# Create table booking_details
 c.execute('''
 CREATE TABLE IF NOT EXISTS booking_details (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,6 +70,7 @@ CREATE TABLE IF NOT EXISTS booking_details (
 )
 ''')
 
+# Create table sessions
 c.execute('''CREATE TABLE IF NOT EXISTS sessions (
     session_id TEXT PRIMARY KEY,
     user_id INTEGER NOT NULL,
@@ -73,6 +78,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS sessions (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)'''
 )
 
+# Create table bus_availability
 c.execute('''
 CREATE TABLE IF NOT EXISTS bus_availability (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -83,7 +89,9 @@ CREATE TABLE IF NOT EXISTS bus_availability (
     UNIQUE (bus_id, travel_date)
 )
 ''')
-# Trigger to update the updated_at column on row update
+
+
+# Trigger to update the updated_at column on row update 
 c.execute('''
 CREATE TRIGGER IF NOT EXISTS update_users_updated_at
 AFTER UPDATE ON users
@@ -121,6 +129,6 @@ END;
 ''')
 
 
-
+#Database connection close
 conn.commit()
 conn.close()

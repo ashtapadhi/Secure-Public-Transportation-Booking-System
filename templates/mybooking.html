@@ -1,78 +1,84 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <title>
-            mybookings
-        </title>
-        <link rel="stylesheet" type="text/css" href="static/css/style.css">
-        </head>
-        <body>
-            <div class="headings">
-                <h3>Bookings</h3>
-            </div>
-            <div>
-                <ul id="bookinglist" style="list-style-type:none;"></ul>
-            </div>
-            <script>
- document.addEventListener('DOMContentLoaded', async function(){
+<head>
+    <title>My Bookings</title>
+    <link rel="stylesheet" type="text/css" href="static/css/style.css">
+</head>
+<body>
+    <center>
+        <!-- Heading for the bookings section -->
+        <div class="headings">
+            <h3>Bookings</h3>
+        </div>
 
-    const booking_response = await fetch('/mybookings', {
+        <!-- List to display bookings -->
+        <div>
+            <ul id="bookinglist" style="list-style-type:none;"></ul>
+        </div>
+    </center>
+    <!-- JavaScript section -->
+    <script>
+        // Fetch and display bookings when the document is loaded
+        document.addEventListener('DOMContentLoaded', async function() {
+            const booking_response = await fetch('/mybookings', {
                 method: 'GET',
                 headers: {
-                    
                     'Content-Type': 'application/json'
-                },
-               
+                }
             });
 
             if (booking_response.ok) {
-    const bookings = await booking_response.json();
-    const bookingList = document.getElementById('bookinglist');
-    bookingList.innerHTML = ''; 
+                const bookings = await booking_response.json();
+                const bookingList = document.getElementById('bookinglist');
+                bookingList.innerHTML = ''; // Clear existing list items
 
-    bookings.forEach(booking => {
-        const listItem = document.createElement('li');
-        listItem.innerHTML = `
-            Booking ID: <strong>${booking.booking_id}</strong>&emsp;
-            Bus Name: <strong>${booking.busname}</strong>&emsp;
-            From: <strong>${booking.from}</strong>&emsp;
-            To: <strong>${booking.to}</strong>&emsp;
-            Travel Date: <strong>${booking.traveldate}</strong>&emsp;
-            Seats Booked: <strong>${booking.noofseats}</strong>&emsp;
-            Total Fare: <strong>${booking.totalfare}</strong>&emsp;
-        `;
+                bookings.forEach(booking => {
+                    // Create list item for each booking
+                    const listItem = document.createElement('li');
+                    listItem.innerHTML = `
+                        Booking ID: <strong>${booking.booking_id}</strong>&emsp;
+                        Bus Name: <strong>${booking.busname}</strong>&emsp;
+                        From: <strong>${booking.from}</strong>&emsp;
+                        To: <strong>${booking.to}</strong>&emsp;
+                        Travel Date: <strong>${booking.traveldate}</strong>&emsp;
+                        Seats Booked: <strong>${booking.noofseats}</strong>&emsp;
+                        Total Fare: <strong>${booking.totalfare}</strong>&emsp;
+                    `;
 
-        
-        const cancelButton = document.createElement('button');
-        cancelButton.textContent = 'Cancel';
-        cancelButton.addEventListener('click', async () => {
-            if (confirm('Are you sure you want to cancel this booking?')) {
-                const cancelResponse = await fetch(`/cancel_booking?booking_id=${booking.booking_id}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    }
+                    // Create cancel button for each booking
+                    const cancelButton = document.createElement('button');
+                    cancelButton.textContent = 'Cancel';
+
+                    // Add event listener to cancel button
+                    cancelButton.addEventListener('click', async () => {
+                        if (confirm('Are you sure you want to cancel this booking?')) {
+                            const cancelResponse = await fetch(`/cancel_booking?booking_id=${booking.booking_id}`, {
+                                method: 'DELETE',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                                }
+                            });
+
+                            if (cancelResponse.ok) {
+                                alert('Booking cancelled successfully.');
+                                listItem.remove(); // Remove the cancelled booking from the list
+                            } else {
+                                alert('Failed to cancel booking.');
+                            }
+                        }
+                    });
+
+                    // Append cancel button to the list item
+                    listItem.appendChild(cancelButton);
+
+                    // Append the list item to the booking list
+                    bookingList.appendChild(listItem);
                 });
-
-                if (cancelResponse.ok) {
-                    alert('Booking cancelled successfully.');
-                    listItem.remove(); 
-                } else {
-                    alert('Failed to cancel booking.');
-                }
+            } else {
+                alert('Error fetching bookings');
             }
         });
-        listItem.appendChild(cancelButton);
-
-        bookingList.appendChild(listItem);
-    });
-} else {
-    alert('Error fetching bookings');
-}
-
- });
-            </script>
-        </body>
-
+    </script>
+</body>
 </html>

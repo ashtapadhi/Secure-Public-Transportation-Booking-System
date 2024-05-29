@@ -1,44 +1,56 @@
-<!doctype html>
-        <head>
-        <title>Login</title>
-        <link rel="stylesheet" type="text/css" href="static/css/style.css">
-        </head>
-        <body>
-            <center>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+    <link rel="stylesheet" type="text/css" href="static/css/style.css">
+</head>
+<body>
+    <center>
+        <!-- Heading section -->
         <div class="headings">
-        <h2>Login</h2>
+            <h2>Login</h2>
         </div>
 
+        <!-- Form for login -->
         <div class="Form_container">
-        <form id="loginform" class="lrforms" action="/login" method="POST">
-        <label>Username</label><input type="text" name="username" id="username" required autocomplete="off">
-        <label>Password</label><input type="password" name="password" id="password" required autocomplete="off">
-        <button type="submit">Login</button>
-        </form>
-        
+            <form id="loginform" class="lrforms" action="/login" method="POST">
+                <label>Username</label><input type="text" name="username" id="username" required autocomplete="off">
+                <label>Password</label><input type="password" name="password" id="password" required autocomplete="off">
+                <button type="submit">Login</button>
+            </form>
         </div>
+
+        <!-- Menu section -->
         <div class="menu">
+            <!-- Link to create account -->
             <a href="/register"><button>Create Account</button></a>
         </div>
     </center>
-        </body>
-        <script>
-            document.getElementById("loginform").addEventListener("submit",async(event)=>{
-                event.preventDefault();
-                const username = document.getElementById('username').value;
-                const password = document.getElementById('password').value;
-                const response= await fetch('/login',{
-                    method:'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({ username, password })
-                });
-                const result=await response.json();
-                if (response.ok){
-                    window.location.href='/dashboard';
-                }
-                else{
-                    alert(result.error)
 
-                }
+    <!-- JavaScript section -->
+    <script>
+        // Event listener for form submission
+        document.getElementById("loginform").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            // Sending login request to the server
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ username, password })
             });
-        </script>
+
+            const result = await response.json();
+            if (response.ok) {
+                // Redirect to dashboard on successful login
+                window.location.href = '/dashboard';
+            } else {
+                // Show error message on unsuccessful login
+                alert(result.error);
+            }
+        });
+    </script>
+</body>
+</html>
