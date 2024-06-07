@@ -246,6 +246,18 @@ def update_user(user_id, name, username, email, phone):
     conn.commit()
     conn.close()
 
+def update_password(user_id,new_password):
+    """Update user password in the database."""
+    encrypted_password=encrypt_data(new_password,cipher_suite)
+    conn = sqlite.connect(db_name)
+    c = conn.cursor()
+    c.execute('''
+        UPDATE users
+        SET password_hash = ?
+        WHERE id = ?
+    ''', (encrypted_password, user_id)) 
+    conn.commit()
+    conn.close()
 
 def get_user_from_booking(booking_id):
     """Retrieve user details from booking information."""
@@ -636,6 +648,14 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 self.send_html_response(200, 'edituser.html')
             else:
                 self.send_error_response(401, 'Unauthorized')
+
+        # Handle change password page, requiring user authentication
+        elif path == 'changepassword':
+            user_id = self.get_user_by_session()
+            if user_id:
+                self.send_html_response(200, 'changepassword.html')
+            else:
+                self.send_error_response(401, 'Unauthorized')
     
         # Handle my bookings, returning JSON response
         elif path == 'mybookings':
@@ -704,7 +724,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 # User does not exist, add new user
                 add_user(name, username, hash_password(password), email, phonenumber)
                 user = get_user(username)
-                print(user[0])
                 session_id = create_session(user[0])
                 self.send_cookie_response(200, 'session_id', session_id,{'message': 'Registration successful'})         
             else:
@@ -816,7 +835,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 self.send_json_response(200, {'message': 'Successfully deleted'})
             else:
                 self.send_error_response(404, 'Deletion not possible')
-
+        else:
+            # Invalid session
+            self.send_error_response(401, 'Invalid session')
 
     #Function to handle PUT request
     def do_PUT(self):
@@ -849,7 +870,24 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     self.send_json_response(200, {'message': 'Registration successful'})
             else:
                 self.send_error_response(401, 'Invalid session')
+        elif self.path == '/changepassword':
+            # Process change password request
+            user_id = self.get_user_by_session()
+            user_details=get_user_details(user_id)
+            password_hash=get_user(user_details[1])[2]
+            old_password=data.get('currentPassword')
+            new_password=data.get('newPassword')
+            if user_details and verify_password(old_password,password_hash):
+                update_password(user_id,hash_password(new_password))
+                self.send_json_response(200, {'message': 'Password updated successfully'})
+            else:
+                self.send_error_response(404, 'Provided current password is wrong.')
+        else:
+            # Invalid session
+            self.send_error_response(401, 'Invalid session')
 
+
+    
     def get_user_by_session(self):
         # Get the user ID from the session
         session_id = self.get_cookie()

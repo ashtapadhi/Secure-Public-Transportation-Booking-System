@@ -42,6 +42,9 @@
                 .then(response => response.text())
                 .then(data => {
                     document.getElementById('menuContainer').innerHTML = data;
+
+                    // Attach logout event listener after the menu is loaded
+                    document.getElementById('logout').addEventListener('click', logout);
                 });
         }
 
@@ -74,6 +77,7 @@
             setMinTravelDate(); // Set the minimum travel date
             document.getElementById('swapButton').addEventListener('click', swap);
             
+            
         });
 
         async function logout() {
@@ -96,25 +100,6 @@
         }
         }
 
-        document.addEventListener('DOMContentLoaded', async function() {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('traveldate').setAttribute('min', today);
-            const token = getCookie('session_id');
-            
-            const response = await fetch('/dashboard', {
-                method: 'GET',
-                headers: {
-            
-                    'Content-Type': 'application/json'
-                }
-            });
-            if (response.ok) {
-                const data = await response.json();
-            } else {
-                alert('Unauthorized');
-                window.location.href = '/';
-            }
-        });
 
         // Event listener for submitting the search bus form
         document.getElementById('searchbus').addEventListener("submit", async function(event){

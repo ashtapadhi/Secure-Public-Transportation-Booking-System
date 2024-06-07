@@ -6,11 +6,14 @@
 </head>
 <body>
     <center>
+        <!-- Menu container to load menu -->
+        <div id="menuContainer"></div>
+
         <!-- Heading for the bookings section -->
         <div class="headings">
             <h3>Bookings</h3>
         </div>
-
+        
         <!-- List to display bookings -->
         <div>
             <ul id="bookinglist"></ul>
@@ -18,8 +21,43 @@
     </center>
     <!-- JavaScript section -->
     <script nonce="{{nonce}}">
+
+        // Load menu from menu.html file
+        function loadMenu() {
+            fetch('menu.html')
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('menuContainer').innerHTML = data;
+
+                    // Attach logout event listener after the menu is loaded
+                    document.getElementById('logout').addEventListener('click', logout);
+                });
+        }
+        
+        // Function to handle logout
+        async function logout() {
+            // Send logout request to the server
+            try {
+                const response = await fetch('/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (response.ok) {
+                    window.location.href = '/'; // Redirect to the homepage after logout
+                } else {
+                    alert('Logout failed');
+                }
+            } catch (error) {
+                console.error('Error during logout:', error);
+                alert('An error occurred. Please try again.');
+            }
+        }
+        
         // Fetch and display bookings when the document is loaded
         document.addEventListener('DOMContentLoaded', async function() {
+            loadMenu(); // Load the menu
             const booking_response = await fetch('/mybookings', {
                 method: 'GET',
                 headers: {

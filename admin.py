@@ -28,12 +28,17 @@ def insert_bus():
     bus_fare = float(input("Enter bus fare: "))
     ac = input("Is the bus AC (yes/no): ").lower() == 'yes'
     available_seats = int(input("Enter number of available seats: "))
+    duration_hours = int(input("Enter duration hours: "))
+    duration_minutes = int(input("Enter duration minutes: "))
+    duration = f"{duration_hours}h {duration_minutes}m"
+    start_time = input("Enter start time (YYYY-MM-DD HH:MM:SS): ")
+    end_time = input("Enter end time (YYYY-MM-DD HH:MM:SS): ")
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
     c.execute('''
-    INSERT INTO buses (bus_name, route_id, bus_fare, ac, available_seats)
-    VALUES (?, ?, ?, ?, ?)
-    ''', (bus_name, route_id, bus_fare, ac, available_seats))
+    INSERT INTO buses (bus_name, route_id, bus_fare, ac, available_seats, duration, start_time, end_time)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (bus_name, route_id, bus_fare, ac, available_seats, duration, start_time, end_time))
     conn.commit()
     conn.close()
     print("Bus added successfully.")

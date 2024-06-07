@@ -43,6 +43,9 @@ CREATE TABLE IF NOT EXISTS buses (
     bus_fare REAL NOT NULL,
     ac INTEGER NOT NULL,
     available_seats INTEGER NOT NULL,
+    duration TEXT NOT NULL,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (route_id) REFERENCES routes(id) ON DELETE CASCADE

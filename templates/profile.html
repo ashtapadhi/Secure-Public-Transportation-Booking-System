@@ -46,6 +46,8 @@
 
 
         </div>
+
+
     </center>
 
     <!-- JavaScript section -->
@@ -77,6 +79,9 @@
                 .then(response => response.text())
                 .then(data => {
                     document.getElementById('menuContainer').innerHTML = data;
+
+                    // Attach logout event listener after the menu is loaded
+                    document.getElementById('logout').addEventListener('click', logout);
                 });
         }
 
