@@ -13,11 +13,11 @@
 
         <!-- List to display bookings -->
         <div>
-            <ul id="bookinglist" style="list-style-type:none;"></ul>
+            <ul id="bookinglist"></ul>
         </div>
     </center>
     <!-- JavaScript section -->
-    <script>
+    <script nonce="{{nonce}}">
         // Fetch and display bookings when the document is loaded
         document.addEventListener('DOMContentLoaded', async function() {
             const booking_response = await fetch('/mybookings', {

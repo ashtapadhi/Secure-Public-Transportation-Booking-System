@@ -4,11 +4,12 @@ import sqlite3
 #Function to add routes
 def insert_route():
     #inputs from user
-    route_name = input("Enter route name: ")
-    route_start = input("Enter route start: ")
-    route_end = input("Enter route end: ")
+    route_name = input("Enter route name: ").lower()
+    route_start = input("Enter route start: ").lower()
+    route_end = input("Enter route end: ").lower()
     connected_cities = input("Enter connected cities (comma-separated): ")
-    connected_cities_json = json.dumps(connected_cities.split(','))
+    connected_cities_lower = [city.strip().lower() for city in connected_cities.split(',')]
+    connected_cities_json = json.dumps(connected_cities_lower)
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
     c.execute('''
@@ -22,7 +23,7 @@ def insert_route():
 #Function to add bus
 def insert_bus():
     #inputs from user
-    bus_name = input("Enter bus name: ")
+    bus_name = input("Enter bus name: ").lower()
     route_id = int(input("Enter route ID: "))
     bus_fare = float(input("Enter bus fare: "))
     ac = input("Is the bus AC (yes/no): ").lower() == 'yes'

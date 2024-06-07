@@ -20,7 +20,7 @@
             <a href="/profile"><button>Back</button></a>
         </form>
     </center>
-    <script>
+    <script nonce="{{nonce}}">
         // Fetch user details and populate the form fields when the document is loaded
         document.addEventListener('DOMContentLoaded', async function() {
             const response = await fetch('/editdetails', {

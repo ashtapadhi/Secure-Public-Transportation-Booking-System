@@ -23,6 +23,7 @@
                 <input type="text" id="to" name="to" required>
                 <label>Date of Travel</label>
                 <input type="date" id="dateoftravel" name="dateoftravel" required>
+                <button type="button" id="swapButton">Swap</button>
                 <button type="submit">Search</button>
             </form>
         </div>
@@ -30,11 +31,11 @@
         <!-- Heading for available buses -->
         <div class="headings">
             <h3 id="buslistheading"></h3>
-            <ul id="busList" style="list-style-type:none;"></ul>
+            <ul id="busList"></ul>
         </div>
     </center>
 
-    <script>
+    <script nonce="{{nonce}}">
         // Function to load the menu from an external file
         function loadMenu() {
             fetch('menu.html')
@@ -42,6 +43,14 @@
                 .then(data => {
                     document.getElementById('menuContainer').innerHTML = data;
                 });
+        }
+
+        //Function to swap from and to values
+        function swap() {
+            const from_value = document.getElementById("from").value;
+            const to_value = document.getElementById("to").value;
+            document.getElementById("from").value = to_value;
+            document.getElementById("to").value = from_value;
         }
 
         // Function to set the minimum travel date to the current date
@@ -63,6 +72,48 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadMenu(); // Load the menu
             setMinTravelDate(); // Set the minimum travel date
+            document.getElementById('swapButton').addEventListener('click', swap);
+            
+        });
+
+        async function logout() {
+        try {
+            const response = await fetch('/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+        if (response.ok) {
+            window.location.href = '/';
+        } else {
+            alert('Logout failed');
+        }
+        } 
+        catch (error) {
+        console.error('Error during logout:', error);
+        alert('An error occurred. Please try again.');
+        }
+        }
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('traveldate').setAttribute('min', today);
+            const token = getCookie('session_id');
+            
+            const response = await fetch('/dashboard', {
+                method: 'GET',
+                headers: {
+            
+                    'Content-Type': 'application/json'
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+            } else {
+                alert('Unauthorized');
+                window.location.href = '/';
+            }
         });
 
         // Event listener for submitting the search bus form
@@ -104,7 +155,7 @@
                     busList.appendChild(listItem); // Append the list item to the bus list
                 });
             } else {
-                alert('Error fetching buses');
+                alert('No buses are available in this route');
             }
         });
     </script>

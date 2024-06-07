@@ -2,33 +2,69 @@ import http.server
 import ssl
 import json
 from urllib.parse import parse_qs, urlparse, quote
+from cryptography.fernet import Fernet
+import bcrypt
 import hashlib
 import base64
 import os
-import sqlite3
+from pysqlcipher3 import dbapi2 as sqlite
 import html
 import http.cookies
 import uuid
 import datetime
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+import secrets
+import random
 
+load_dotenv()
 
+#load confidential info from environment
+db_name = os.getenv('DB_NAME')
 
+key= os.getenv('KEY')
+cipher_suite = Fernet(key)
 
 #template management function
 
-def load_template(filename):
-    """Load HTML template from the templates directory."""
+def load_template(filename, nonce):
+    """Load HTML template from the templates directory and replace the nonce placeholder."""
     with open(os.path.join('templates', filename), 'r') as file:
-        return file.read()
+        template = file.read()
+        # Replace the nonce placeholder with the actual nonce
+        return template.replace('{{nonce}}', nonce)
     
-    
+
 #security functions    
+    
+# Generate anti-CSRF token
+def generate_csrf_token():
+    return secrets.token_hex(16)  # Generate a 32-character random token
+
+
+def hash_data(data):
+    """Hash the data using SHA-256 and base64 encoding."""
+    if isinstance(data, str):
+        data_bytes = data.encode()
+    elif isinstance(data, bytes):
+        data_bytes = data
+    else:
+        raise ValueError("Data must be a string or bytes.")
+
+    hashed_data = hashlib.sha256(data_bytes).digest()
+    encoded_data = base64.b64encode(hashed_data).decode()
+    return encoded_data
+    
 
 def hash_password(password):
-    """Hash the user password using SHA-256 and base64 encoding."""
-    return base64.b64encode(hashlib.sha256(password.encode()).digest()).decode()
+    """Hash the user password using bcrypt and encoding."""
+    salt = bcrypt.gensalt()
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed_password
 
+def verify_password(entered_password,password):
+    """Verify user password using bcrypt."""
+    return bcrypt.checkpw(entered_password.encode('utf-8'), password.encode('utf-8'))
 
 def sanitize_input(data):
     """Sanitize user input to prevent XSS attacks."""
@@ -44,6 +80,19 @@ def sanitize_input(data):
     return {k: html.escape(v[0]) for k, v in sanitized_query.items()}
 
 
+# function to encrypt data
+def encrypt_data(data, cipher_suite):
+    # Ensure data is bytes-like object
+    if isinstance(data, str):
+        data = data.encode('utf-8')
+    encrypted_data = cipher_suite.encrypt(data)
+    return encrypted_data
+
+#function to decrypt data
+def decrypt_data(encrypted_data,cipher_suite):
+    decrypted_data = cipher_suite.decrypt(encrypted_data)
+    return decrypted_data.decode('utf-8')
+
 # Database Operations
 
 
@@ -53,43 +102,57 @@ def create_session(user_id):
     """Create a new session for the user."""
     session_id = str(uuid.uuid4())
     expiry = datetime.now() + timedelta(hours=1)
-    add_session(session_id, user_id, expiry)
+    encrypted_session_id=encrypt_data(session_id,cipher_suite)
+    encrypted_expiry=encrypt_data(str(expiry),cipher_suite)
+    session_id_hash=hash_data(session_id)
+    add_session(encrypted_session_id, user_id, encrypted_expiry,session_id_hash)
     return session_id
 
 
-def add_session(session_id, user_id, expiry):
+def add_session(session_id, user_id, expiry,session_id_hash):
     """Add a new session to the database."""
-    conn = sqlite3.connect('database.db')
+    conn = sqlite.connect(db_name)
     c = conn.cursor()
     c.execute('''
-        INSERT INTO sessions (session_id, user_id, expires_at) 
-        VALUES (?, ?, ?)
-    ''', (session_id, user_id, expiry))
+        INSERT INTO sessions (session_id, user_id, expires_at,session_id_hash) 
+        VALUES (?, ?, ?,?)
+    ''', (session_id, user_id, expiry,session_id_hash))
     conn.commit()
     conn.close()
 
 
 def get_current_user(session_id):
     """Retrieve current user session information by session_id."""
-    conn = sqlite3.connect('database.db')
+    conn = sqlite.connect(db_name)
     c = conn.cursor()
-    c.execute('SELECT user_id, expires_at FROM sessions WHERE session_id = ?', (session_id,))
+    hashed_session_id=hash_data(session_id)
+    c.execute('SELECT user_id, expires_at FROM sessions WHERE session_id_hash = ?', (hashed_session_id,))
     session = c.fetchone()
-    conn.close()
-    return session
+    if session:
+        user_id, encrypted_expiry= session
+        decrypted_expiry = decrypt_data(encrypted_expiry,cipher_suite)
+        session_with_decrypted_data = (user_id, decrypted_expiry)
+        conn.close()
+        return session_with_decrypted_data
+    else:
+        conn.close()
+        return None
+
 
 
 def delete_session(session_id):
     """Delete a session by session_id."""
-    conn = sqlite3.connect('database.db')
+    conn = sqlite.connect(db_name)
     c = conn.cursor()
+    hashed_session_id=hash_data(session_id)
     try:
-        c.execute('DELETE FROM sessions WHERE session_id = ?', (session_id,))
+        #encrypted_session_id=encrypt_data(session_id,cipher_suite)
+        c.execute('DELETE FROM sessions WHERE session_id_hash = ?', (hashed_session_id,))
         conn.commit()
         rows_affected = c.rowcount
         conn.close()
         return rows_affected > 0
-    except sqlite3.Error as e:
+    except sqlite.Error as e:
         print(f"Database error: {e}")
         conn.close()
         return False
@@ -99,27 +162,47 @@ def delete_session(session_id):
 #user management functions
 def get_user(username):
     """Retrieve user details from the database."""
-    conn = sqlite3.connect('database.db')
+    hashed_username=hash_data(username)
+    conn = sqlite.connect(db_name)
     c = conn.cursor()
-    c.execute('SELECT id, username, password_hash FROM users WHERE username = ?', (username,))
+    c.execute('SELECT id, username, password_hash FROM users WHERE username_hash = ?', (hashed_username,))
     user = c.fetchone()
-    conn.close()
-    return user
+    if user:
+        user_id, encrypted_username, encrypted_password= user
+        decrypted_username = decrypt_data(encrypted_username,cipher_suite)
+        decrypted_password = decrypt_data(encrypted_password,cipher_suite)
+        user_with_decrypted_data = (user_id, decrypted_username, decrypted_password)
+        conn.close()
+        return user_with_decrypted_data
+    else:
+        conn.close()
+        return None
 
 
 def get_user_details(user_id):
     """Retrieve user details by user_id from the database."""
-    conn = sqlite3.connect('database.db')
+    conn = sqlite.connect(db_name)
     c = conn.cursor()
     c.execute('SELECT name, username, email, phone_number FROM users WHERE id = ?', (user_id,))
     user = c.fetchone()
-    conn.close()
-    return user
+    if user:
+        name, encrypted_username, encrypted_email, encrypted_phone = user
+        decrypted_username = decrypt_data(encrypted_username,cipher_suite)
+        decrypted_email = decrypt_data(encrypted_email,cipher_suite)
+        decrypted_phone = decrypt_data(encrypted_phone,cipher_suite)
+        user_with_decrypted_data = (name, decrypted_username, decrypted_email, decrypted_phone)
+        conn.close()
+        return user_with_decrypted_data
+    else:
+        conn.close()
+        return None
+        
+        
 
 
 def delete_user(user_id):
     """Delete user from the database."""
-    conn = sqlite3.connect('database.db')
+    conn = sqlite.connect(db_name)
     c = conn.cursor()
     try:
         c.execute('DELETE FROM users WHERE id = ?', (user_id,))
@@ -127,7 +210,7 @@ def delete_user(user_id):
         rows_affected = c.rowcount
         conn.close()
         return rows_affected > 0
-    except sqlite3.Error as e:
+    except sqlite.Error as e:
         print(f"Database error: {e}")
         conn.close()
         return False
@@ -135,30 +218,38 @@ def delete_user(user_id):
 
 def add_user(name, username, password, email, phonenumber):
     """Add a new user to the database."""
-    conn = sqlite3.connect('database.db')
+    encrypted_username=encrypt_data(username,cipher_suite)
+    encrypted_password=encrypt_data(password,cipher_suite)
+    encrypted_email=encrypt_data(email,cipher_suite)
+    encrypted_phonenumber=encrypt_data(phonenumber,cipher_suite)
+    hashed_username=hash_data(username)
+    conn = sqlite.connect(db_name)
     c = conn.cursor()
-    c.execute('INSERT INTO users (name, username, password_hash, email, phone_number) VALUES (?, ?, ?, ?, ?)', 
-              (name, username, password, email, phonenumber))
+    c.execute('INSERT INTO users (name, username, password_hash, email, phone_number, username_hash) VALUES (?, ?, ?, ?, ?,?)', 
+              (name, encrypted_username, encrypted_password, encrypted_email, encrypted_phonenumber,hashed_username))
     conn.commit()
     conn.close()
 
 
 def update_user(user_id, name, username, email, phone):
     """Update user details in the database."""
-    conn = sqlite3.connect('database.db')
+    encrypted_username=encrypt_data(username,cipher_suite)
+    encrypted_email=encrypt_data(email,cipher_suite)
+    encrypted_phonenumber=encrypt_data(phone,cipher_suite)
+    conn = sqlite.connect(db_name)
     c = conn.cursor()
     c.execute('''
         UPDATE users
         SET name = ?, username = ?, email = ?, phone_number = ?
         WHERE id = ?
-    ''', (name, username, email, phone, user_id)) 
+    ''', (name, encrypted_username, encrypted_email, encrypted_phonenumber, user_id)) 
     conn.commit()
     conn.close()
 
 
 def get_user_from_booking(booking_id):
     """Retrieve user details from booking information."""
-    conn = sqlite3.connect('database.db')
+    conn = sqlite.connect(db_name)
     c = conn.cursor()
     c.execute('''
         SELECT user_id, seats_booked, bus_id, booking_date 
@@ -173,7 +264,7 @@ def get_user_from_booking(booking_id):
     
 def add_booking(user_id, bus_id, route_id, bus_name, route_start, route_end, travel_date, no_of_pass, total_fare):
     """Add a new booking to the database."""
-    conn = sqlite3.connect('database.db')
+    conn = sqlite.connect(db_name)
     c = conn.cursor()
     c.execute('INSERT INTO booking_details (user_id, bus_id, route_id, bus_name, route_start, route_end, booking_date, seats_booked, total_fare) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', 
               (user_id, bus_id, route_id, bus_name, route_start, route_end, travel_date, no_of_pass, total_fare))
@@ -182,7 +273,7 @@ def add_booking(user_id, bus_id, route_id, bus_name, route_start, route_end, tra
 
 def booked_seats(bus_id, date):
     """Count the number of booked seats for a specific bus and date."""
-    conn = sqlite3.connect('database.db')
+    conn = sqlite.connect(db_name)
     c = conn.cursor()
     c.execute('''
         SELECT count(id) FROM booking_details WHERE bus_id = ? AND booking_date = ?
@@ -194,7 +285,7 @@ def booked_seats(bus_id, date):
 
 def get_booking_details(user_id):
     """Retrieve booking details for a specific user."""
-    conn = sqlite3.connect('database.db')
+    conn = sqlite.connect(db_name)
     c = conn.cursor()
     c.execute('''
         SELECT id, user_id, bus_id, bus_name, route_start, route_end, booking_date, seats_booked, total_fare 
@@ -208,7 +299,7 @@ def get_booking_details(user_id):
 
 def cancel_booking(booking_id):
     """Cancel a booking by booking_id."""
-    conn = sqlite3.connect('database.db')
+    conn = sqlite.connect(db_name)
     c = conn.cursor()
     try:
         c.execute('DELETE FROM booking_details WHERE id = ?', (booking_id,))
@@ -216,7 +307,7 @@ def cancel_booking(booking_id):
         rows_affected = c.rowcount
         conn.close()
         return rows_affected > 0
-    except sqlite3.Error as e:
+    except sqlite.Error as e:
         print(f"Database error: {e}")
         conn.close()
         return False
@@ -225,14 +316,14 @@ def cancel_booking(booking_id):
 
 def get_buses(from_city, to_city):
     """Retrieve buses between two cities."""
-    conn = sqlite3.connect('database.db')
+    conn = sqlite.connect(db_name)
     c = conn.cursor()
     c.execute('''
         SELECT buses.id, buses.bus_name, buses.bus_fare, buses.ac, buses.available_seats 
         FROM buses 
         JOIN routes ON buses.route_id = routes.id 
         WHERE routes.route_start = ? AND routes.route_end = ?
-    ''', (from_city, to_city))
+    ''', (from_city.lower(), to_city.lower()))
     buses = c.fetchall()
     conn.close()
     return buses
@@ -240,7 +331,7 @@ def get_buses(from_city, to_city):
 
 def get_bus_details(bus_id):
     """Retrieve bus details by bus_id."""
-    conn = sqlite3.connect('database.db')
+    conn = sqlite.connect(db_name)
     c = conn.cursor()
     c.execute('''
         SELECT buses.id, buses.bus_name, buses.bus_fare, buses.available_seats, routes.route_start, routes.route_end, route_id 
@@ -255,7 +346,7 @@ def get_bus_details(bus_id):
 
 def get_seat_availability(bus_id, travel_date):
     """Retrieve seat availability for a specific bus and date."""
-    conn = sqlite3.connect('database.db')
+    conn = sqlite.connect(db_name)
     c = conn.cursor()
     c.execute('SELECT available_seats FROM bus_availability WHERE bus_id = ? AND travel_date = ?', (bus_id, travel_date))
     seats = c.fetchone()
@@ -265,7 +356,7 @@ def get_seat_availability(bus_id, travel_date):
 
 def set_seat_availability(bus_id, travel_date, available_seats):
     """Set seat availability for a specific bus and date."""
-    conn = sqlite3.connect('database.db')
+    conn = sqlite.connect(db_name)
     c = conn.cursor()
     c.execute('INSERT INTO bus_availability (bus_id, travel_date, available_seats) VALUES (?, ?, ?)', (bus_id, travel_date, available_seats))
     conn.commit()
@@ -274,7 +365,7 @@ def set_seat_availability(bus_id, travel_date, available_seats):
 
 def increase_seats(seats_booked, bus_id, travel_date):
     """Increase available seats for a specific bus and date."""
-    conn = sqlite3.connect('database.db')
+    conn = sqlite.connect(db_name)
     c = conn.cursor()
     c.execute('''
         UPDATE bus_availability
@@ -287,7 +378,7 @@ def increase_seats(seats_booked, bus_id, travel_date):
 
 def decrease_seats(seats_booked, bus_id, travel_date):
     """Decrease available seats for a specific bus and date."""
-    conn = sqlite3.connect('database.db')
+    conn = sqlite.connect(db_name)
     c = conn.cursor()
     c.execute('''
         UPDATE bus_availability
@@ -301,7 +392,7 @@ def decrease_seats(seats_booked, bus_id, travel_date):
 
 def get_route_details(route_id):
     """Retrieve route details by route_id."""
-    conn = sqlite3.connect('database.db')
+    conn = sqlite.connect(db_name)
     c = conn.cursor()
     c.execute('''
         SELECT route_start, route_end FROM routes WHERE id = ?
@@ -327,23 +418,63 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(b'File not found')
 
     # Helper function to send HTML response
-    def send_html_response(self,status, template):
+    def send_html_response(self, status, template):
+        # Generate a random nonce
+        nonce = base64.b64encode(random.getrandbits(64).to_bytes(8, 'big')).decode()
+        csp_header = (
+            f"default-src 'self'; "
+            f"script-src 'self' 'strict-dynamic' 'nonce-{nonce}' https:; "
+            f"style-src 'self' ; "
+            f"object-src 'none'; "
+            f"base-uri 'none'; "
+            f"frame-ancestors 'self'; "
+            f"worker-src 'self'; "
+            f"form-action 'self';"
+        )
         self.send_response(status)
         self.send_header('Content-type', 'text/html')
+        self.send_header('Content-Security-Policy', csp_header)
         self.end_headers()
-        self.wfile.write(load_template(template).encode())
+        self.wfile.write(load_template(template,nonce).encode())
+
 
     # Helper function to send JSON response
     def send_json_response(self,status, data):
+        # Generate a random nonce
+        nonce = base64.b64encode(random.getrandbits(64).to_bytes(8, 'big')).decode()
+        csp_header = (
+            f"default-src 'self'; "
+            f"script-src 'self' 'strict-dynamic' 'nonce-{nonce}' https:; "
+            f"style-src 'self' ; "
+            f"object-src 'none'; "
+            f"base-uri 'none'; "
+            f"frame-ancestors 'self'; "
+            f"worker-src 'self'; "
+            f"form-action 'self';"
+        )
         self.send_response(status)
         self.send_header('Content-type', 'application/json')
+        self.send_header('Content-Security-Policy', csp_header)
         self.end_headers()
         self.wfile.write(json.dumps(data).encode())
 
     # Helper function to send error response in JSON format
     def send_error_response(self,status, message):
+        # Generate a random nonce
+        nonce = base64.b64encode(random.getrandbits(64).to_bytes(8, 'big')).decode()
+        csp_header = (
+            f"default-src 'self'; "
+            f"script-src 'self' 'strict-dynamic' 'nonce-{nonce}' https:; "
+            f"style-src 'self' ; "
+            f"object-src 'none'; "
+            f"base-uri 'none'; "
+            f"frame-ancestors 'self'; "
+            f"worker-src 'self'; "
+            f"form-action 'self';"
+        )
         self.send_response(status)
         self.send_header('Content-type', 'application/json')
+        self.send_header('Content-Security-Policy', csp_header)
         self.end_headers()
         self.wfile.write(json.dumps({'error': message}).encode())
 
@@ -356,8 +487,21 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         if cookie_expires:
             cookie[cookie_name]['expires'] = cookie_expires
         self.send_response(status_code)
+        # Generate a random nonce
+        nonce = base64.b64encode(random.getrandbits(64).to_bytes(8, 'big')).decode()
+        csp_header = (
+            f"default-src 'self'; "
+            f"script-src 'self' 'strict-dynamic' 'nonce-{nonce}' https:; "
+            f"style-src 'self' ; "
+            f"object-src 'none'; "
+            f"base-uri 'none'; "
+            f"frame-ancestors 'self'; "
+            f"worker-src 'self'; "
+            f"form-action 'self';"
+        )
         self.send_header('Content-type', 'application/json')
         self.send_header('Set-Cookie', cookie.output(header='', sep=''))
+        self.send_header('Content-Security-Policy', csp_header)
         self.end_headers()
         self.wfile.write(json.dumps(data).encode())
 
@@ -398,11 +542,24 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         elif path.startswith('bookpage'):
             bus_id = query.get('bus_id', [None])[0]
             travel_date = query.get('travel_date', [None])[0]
-            booking_page = load_template('book.html')
+            # Generate a random nonce
+            nonce = base64.b64encode(random.getrandbits(64).to_bytes(8, 'big')).decode()
+            csp_header = (
+                f"default-src 'self'; "
+                f"script-src 'self' 'strict-dynamic' 'nonce-{nonce}' https:; "
+                f"style-src 'self' ; "
+                f"object-src 'none'; "
+                f"base-uri 'none'; "
+                f"frame-ancestors 'self'; "
+                f"worker-src 'self'; "
+                f"form-action 'self';"
+            )
+            booking_page = load_template('book.html',nonce)
             booking_page = booking_page.replace('{{bus_id}}', bus_id)
             booking_page = booking_page.replace('{{travel_date}}', travel_date)
             self.send_response(200)
             self.send_header('Content-type', 'text/html')
+            self.send_header('Content-Security-Policy', csp_header)
             self.end_headers()
             self.wfile.write(booking_page.encode())
     
@@ -417,7 +574,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         # Handle bus details, returning JSON response
         elif path.startswith('busdetails'):
             bus_id = query.get('bus_id', [None])[0]
-            travel_date = query.get('travel_date', [None])[0]
+            travel_date = query.get('travel_date', [None])
+
             if bus_id:
                 bus = get_bus_details(bus_id)
                 available_seats = get_seat_availability(bus_id, travel_date)
@@ -526,7 +684,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             username = data.get('username')
             password = data.get('password')
             user = get_user(username)
-            if user and user[2] == hash_password(password):
+            if user and verify_password(password,user[2]):
                 # Successful login
                 session_id = create_session(user[0])
                 self.send_cookie_response(200, 'session_id', session_id,{'message': 'Login successful'})
@@ -546,6 +704,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 # User does not exist, add new user
                 add_user(name, username, hash_password(password), email, phonenumber)
                 user = get_user(username)
+                print(user[0])
                 session_id = create_session(user[0])
                 self.send_cookie_response(200, 'session_id', session_id,{'message': 'Registration successful'})         
             else:
@@ -560,23 +719,26 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             travel_date = data['traveldate']
             buses_list = []
             buses = get_buses(from_city, to_city)
-            for bus in buses:
-                available_seats = get_seat_availability(bus[0], travel_date)
-                if available_seats is not None:
-                    seats_available = available_seats
-                else:
-                    set_seat_availability(bus[0], travel_date, bus[4])
-                    seats_available = bus[4]
+            if buses:
+                for bus in buses:
+                    available_seats = get_seat_availability(bus[0], travel_date)
+                    if available_seats is not None:
+                        seats_available = available_seats
+                    else:
+                        set_seat_availability(bus[0], travel_date, bus[4])
+                        seats_available = bus[4]
 
-                buses_list.append({
-                    'id': bus[0],
-                    'bus_name': bus[1],
-                    'bus_fare': bus[2],
-                    'ac': bus[3],
-                    'available_seats': seats_available
-                })
+                    buses_list.append({
+                        'id': bus[0],
+                        'bus_name': bus[1],
+                        'bus_fare': bus[2],
+                        'ac': bus[3],
+                        'available_seats': seats_available
+                    })
 
-            self.send_json_response(200, buses_list)
+                self.send_json_response(200, buses_list)
+            else:
+                self.send_error_response(400,'No buses available in this route')
 
         elif self.path == '/book':
             # Process booking request
@@ -664,7 +826,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         raw_data = parse_qs(post_data.decode())
         data = sanitize_input(raw_data)
 
-        if self.path == 'editdetails':
+        if self.path == '/editdetails':
             # Process edit user details request
             user_id = self.get_user_by_session()
             if user_id:

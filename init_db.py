@@ -1,8 +1,8 @@
-import sqlite3
+from pysqlcipher3 import dbapi2 as sqlite
 
 
 #Connection with Database
-conn = sqlite3.connect('database.db')
+conn = sqlite.connect('database.db')
 conn.execute("PRAGMA foreign_keys = ON")
 c = conn.cursor()
 
@@ -11,11 +11,11 @@ c.execute('''
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    username TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    phone_number TEXT,
-    booked_routes TEXT,
+    username BLOB UNIQUE NOT NULL,
+    password_hash BLOB NOT NULL,
+    email BLOB UNIQUE NOT NULL,
+    phone_number BLOB,
+    username_hash TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
@@ -72,9 +72,10 @@ CREATE TABLE IF NOT EXISTS booking_details (
 
 # Create table sessions
 c.execute('''CREATE TABLE IF NOT EXISTS sessions (
-    session_id TEXT PRIMARY KEY,
+    session_id BLOB PRIMARY KEY,
     user_id INTEGER NOT NULL,
-    expires_at TEXT NOT NULL,
+    expires_at BLOB NOT NULL,
+    session_id_hash text NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)'''
 )
 

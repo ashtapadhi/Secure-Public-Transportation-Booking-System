@@ -40,11 +40,16 @@
 
             <!-- Button to edit the account -->
             <a href="/edit"><button id="editAccountButton">Edit Account</button></a>
+
+            <!-- Button to change the password -->
+            <a href="/changepassword"><button id="changepassButton">Change Password</button></a>
+
+
         </div>
     </center>
 
     <!-- JavaScript section -->
-    <script>
+    <script nonce="{{nonce}}">
         // Function to handle logout
         async function logout() {
             // Send logout request to the server

@@ -1,3 +1,4 @@
+
 .menu {
     margin-top: 20px;
     margin-bottom: 20px;
@@ -179,4 +180,13 @@ li {
     display: inline;
     cursor: pointer;
     gap: 10px
+}
+
+
+#busList{
+    list-style-type:none;
+}
+
+#bookinglist{
+    list-style-type:none
 }
