@@ -351,6 +351,18 @@ def get_cancelled_booking_details(user_id):
     conn.close()
     return cancelled_booking
 
+def get_completed_booking_details(user_id):
+    """Retrieve completed booking details for a specific user."""
+    conn = sqlite.connect(db_name)
+    c = conn.cursor()
+    c.execute('''
+        SELECT id, user_id, bus_id, bus_name, route_start, route_end, booking_date, seats_booked, total_fare 
+        FROM completed_bookings
+        WHERE user_id = ?
+    ''', (user_id,))
+    completed_bookings = c.fetchall()
+    conn.close()
+    return completed_bookings
 
 def cancel_booking(booking_id):
     """Cancel a booking by booking_id."""
@@ -530,7 +542,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(data).encode())
 
     # Helper function to send error response in JSON format
-    def send_error_response(self,status, message):
+    def send_error_response(self,status, message, redirect=None):
         # Generate a random nonce
         nonce = base64.b64encode(random.getrandbits(64).to_bytes(8, 'big')).decode()
         csp_header = (
@@ -548,8 +560,11 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         self.send_header('Content-type', 'application/json')
         self.send_header('Content-Security-Policy', csp_header)
         self.send_header('X-Content-Type-Options', 'nosniff')
+        if redirect:
+            self.send_header('Location', redirect)
         self.end_headers()
-        self.wfile.write(json.dumps({'error': message}).encode())
+        if not redirect:
+            self.wfile.write(json.dumps({'error': message}).encode())
 
     # Helper function to send cookie response
     def send_cookie_response(self, status_code, cookie_name, cookie_value, data, 
@@ -649,7 +664,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 print("token ",token[0])
                 self.send_html_response(200, 'dashboard.html',token[0])
             else:
-                self.send_error_response(401, 'Unauthorized')
+                self.send_error_response(302, 'Unauthorized',redirect='/login')
     
         # Handle booking page with dynamic content
         elif path.startswith('bookpage'):
@@ -662,14 +677,14 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 token=get_token(self.get_cookie())
                 self.send_booking_page_response(bus_id,travel_date,token[0])
             else:
-                self.send_error_response(401, 'Unauthorized')
+                self.send_error_response(302, 'Unauthorized',redirect='login')
         # Handle profile page, requiring user authentication
         elif path == 'profile':
             user_id = self.get_user_by_session()
             if user_id:
                 self.send_html_response(200, 'profile.html')
             else:
-                self.send_error_response(401, 'Unauthorized')
+                self.send_error_response(302, 'Unauthorized',redirect='login')
     
         # Handle bus details, returning JSON response
         elif path.startswith('busdetails'):
@@ -736,7 +751,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 token=get_token(self.get_cookie())
                 self.send_html_response(200, 'edituser.html',token[0])
             else:
-                self.send_error_response(401, 'Unauthorized')
+                self.send_error_response(302, 'Unauthorized',redirect='login')
 
         # Handle change password page, requiring user authentication
         elif path == 'changepassword':
@@ -745,7 +760,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 token=get_token(self.get_cookie())
                 self.send_html_response(200, 'changepassword.html',token[0])
             else:
-                self.send_error_response(401, 'Unauthorized')
+                self.send_error_response(302, 'Unauthorized',redirect='login')
     
         # Handle my bookings, returning JSON response
         elif path == 'mybookings':
@@ -753,6 +768,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             if user_id:
                 active_bookings = get_booking_details(user_id)
                 cancelled_bookings=get_cancelled_booking_details(user_id)
+                completed_bookings=get_completed_booking_details(user_id)
                 booking_list = []
 
                 for booking in active_bookings:
@@ -781,6 +797,19 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     }
                     booking_list.append(cancelled_booking_info)
 
+                for completed_booking in completed_bookings:
+                    completed_booking_info = {
+                        'booking_id': completed_booking[0],
+                        'busname': completed_booking[3],
+                        'from': completed_booking[4],
+                        'to': completed_booking[5],
+                        'traveldate': completed_booking[6],
+                        'noofseats': completed_booking[7],
+                        'totalfare': completed_booking[8],
+                        'status': 'completed'  
+                    }
+                    booking_list.append(completed_booking_info)
+
                 if booking_list:
                     self.send_json_response(200, booking_list)
                     return
@@ -792,7 +821,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             if user_id:
                 self.send_html_response(200, 'mybooking.html')
             else:
-                self.send_error_response(401, 'Unauthorized')
+                self.send_error_response(302, 'Unauthorized',redirect='login')
     
         # Handle unknown paths
         else:
@@ -899,7 +928,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             user=get_user_details(user_id)
             client_csrf_token=self.headers.get('X-CSRF-Token')
             token=get_token(self.get_cookie())
-            if validate_csrf_token(client_csrf_token,token):
+            if validate_csrf_token(client_csrf_token,token[0]):
                 if user_id:
                     data = json.loads(post_data)
                     bus_id = data['bus_id']

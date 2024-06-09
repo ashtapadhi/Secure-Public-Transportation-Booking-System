@@ -106,6 +106,32 @@ CREATE TABLE IF NOT EXISTS cancelled_booking_details (
 )
 ''')
 
+# Create table completed_bookings
+c.execute('''
+CREATE TABLE IF NOT EXISTS completed_bookings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    bus_id INTEGER NOT NULL,
+    route_id INTEGER NOT NULL,
+    bus_name TEXT NOT NULL,
+    route_start TEXT NOT NULL,
+    route_end TEXT NOT NULL,
+    booking_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    seats_booked INTEGER NOT NULL,
+    total_fare REAL NOT NULL,
+    customer_name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone_number TEXT,
+    duration TEXT NOT NULL,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (bus_id) REFERENCES buses(id) ON DELETE CASCADE,
+    FOREIGN KEY (route_id) REFERENCES routes(route_id) ON DELETE CASCADE
+)
+''')
 
 # Create table sessions
 c.execute('''CREATE TABLE IF NOT EXISTS sessions (
@@ -182,6 +208,26 @@ BEGIN
         OLD.booking_date, OLD.seats_booked, OLD.total_fare, OLD.customer_name, OLD.email, OLD.phone_number,
         OLD.duration, OLD.start_time, OLD.end_time
     );
+END;
+''')
+
+# Create trigger to move completed bookings
+c.execute('''
+CREATE TRIGGER IF NOT EXISTS move_completed_booking
+AFTER UPDATE OF end_time ON booking_details
+FOR EACH ROW
+WHEN NEW.end_time < CURRENT_TIMESTAMP
+BEGIN
+    INSERT INTO completed_bookings (
+        user_id, bus_id, route_id, bus_name, route_start, route_end,
+        booking_date, seats_booked, total_fare, customer_name, 
+        email, phone_number, duration, start_time, end_time, completed_at
+    ) VALUES (
+        NEW.user_id, NEW.bus_id, NEW.route_id, NEW.bus_name, NEW.route_start, NEW.route_end,
+        NEW.booking_date, NEW.seats_booked, NEW.total_fare, NEW.customer_name, 
+        NEW.email, NEW.phone_number, NEW.duration, NEW.start_time, NEW.end_time, CURRENT_TIMESTAMP
+    );
+    DELETE FROM booking_details WHERE id = NEW.id;
 END;
 ''')
 

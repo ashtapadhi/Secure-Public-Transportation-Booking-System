@@ -190,3 +190,8 @@ li {
 #bookinglist{
     list-style-type:none
 }
+
+#bookingerror{
+    color: #596759;
+    font-family:'Times New Roman', Times, serif;
+}

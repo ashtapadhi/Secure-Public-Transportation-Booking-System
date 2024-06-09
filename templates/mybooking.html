@@ -18,6 +18,11 @@
         <div>
             <ul id="bookinglist"></ul>
         </div>
+
+        <!-- Display error -->
+        <div>
+            <p id="bookingerror"></p>
+        </div>
     </center>
     <!-- JavaScript section -->
     <script nonce="{{nonce}}">
@@ -70,6 +75,7 @@
                 const bookingList = document.getElementById('bookinglist');
                 bookingList.innerHTML = ''; // Clear existing list items
 
+                document.getElementById('bookingerror').innerHTML='';
                 bookings.forEach(booking => {
                     // Create list item for each booking
                     const listItem = document.createElement('li');
@@ -84,6 +90,7 @@
                         Status: <strong>${booking.status}</strong>&emsp;
                     `;
 
+                    
                     // Create cancel button for each booking
                     const cancelButton = document.createElement('button');
                     cancelButton.textContent = 'Cancel';
@@ -101,21 +108,29 @@
 
                             if (cancelResponse.ok) {
                                 alert('Booking cancelled successfully.');
-                                listItem.remove(); // Remove the cancelled booking from the list
+                                // Reload the page to reflect changes
+                                window.location.reload();
+                               
                             } else {
                                 alert('Failed to cancel booking.');
                             }
                         }
                     });
 
-                    // Append cancel button to the list item
-                    listItem.appendChild(cancelButton);
+                    if(booking.status=="active"){
+                         // Append cancel button to the list item
+                        listItem.appendChild(cancelButton);
+                    }
+
+
+                   
 
                     // Append the list item to the booking list
                     bookingList.appendChild(listItem);
                 });
             } else {
-                alert('Error fetching bookings');
+                document.getElementById('bookingerror').innerHTML="Currently you have no bookings";
+                //alert('Error fetching bookings');
             }
         });
     </script>
