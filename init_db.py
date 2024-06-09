@@ -44,8 +44,8 @@ CREATE TABLE IF NOT EXISTS buses (
     ac INTEGER NOT NULL,
     available_seats INTEGER NOT NULL,
     duration TEXT NOT NULL,
-    start_time TIMESTAMP NOT NULL,
-    end_time TIMESTAMP NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (route_id) REFERENCES routes(id) ON DELETE CASCADE
@@ -58,13 +58,19 @@ CREATE TABLE IF NOT EXISTS booking_details (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     bus_id INTEGER NOT NULL,
-          route_id INTEGER NOT NULL,
+    route_id INTEGER NOT NULL,
     bus_name TEXT NOT NULL,
     route_start TEXT NOT NULL,
     route_end TEXT NOT NULL,
     booking_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     seats_booked INTEGER NOT NULL,
     total_fare REAL NOT NULL,
+    customer_name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone_number TEXT,
+    duration TEXT NOT NULL,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -73,12 +79,41 @@ CREATE TABLE IF NOT EXISTS booking_details (
 )
 ''')
 
+# Create table cancelled_booking_details
+c.execute('''
+CREATE TABLE IF NOT EXISTS cancelled_booking_details (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    bus_id INTEGER NOT NULL,
+    route_id INTEGER NOT NULL,
+    bus_name TEXT NOT NULL,
+    route_start TEXT NOT NULL,
+    route_end TEXT NOT NULL,
+    booking_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    seats_booked INTEGER NOT NULL,
+    total_fare REAL NOT NULL,
+    customer_name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone_number TEXT,
+    duration TEXT NOT NULL,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (bus_id) REFERENCES buses(id) ON DELETE CASCADE,
+    FOREIGN KEY (route_id) REFERENCES routes(route_id) ON DELETE CASCADE
+)
+''')
+
+
 # Create table sessions
 c.execute('''CREATE TABLE IF NOT EXISTS sessions (
     session_id BLOB PRIMARY KEY,
     user_id INTEGER NOT NULL,
     expires_at BLOB NOT NULL,
     session_id_hash text NOT NULL,
+    csrf_token text NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)'''
 )
 
@@ -132,6 +167,23 @@ BEGIN
 END;
 ''')
 
+c.execute('''
+CREATE TRIGGER IF NOT EXISTS move_to_cancelled
+AFTER DELETE ON booking_details
+FOR EACH ROW
+BEGIN
+    INSERT INTO cancelled_booking_details (
+        user_id, bus_id, route_id, bus_name, route_start, route_end,
+        booking_date, seats_booked, total_fare, customer_name, email, phone_number,
+        duration, start_time, end_time
+    )
+    VALUES (
+        OLD.user_id, OLD.bus_id, OLD.route_id, OLD.bus_name, OLD.route_start, OLD.route_end,
+        OLD.booking_date, OLD.seats_booked, OLD.total_fare, OLD.customer_name, OLD.email, OLD.phone_number,
+        OLD.duration, OLD.start_time, OLD.end_time
+    );
+END;
+''')
 
 #Database connection close
 conn.commit()

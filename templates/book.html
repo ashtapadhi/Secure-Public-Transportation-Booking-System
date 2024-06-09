@@ -28,6 +28,7 @@
                 <input type="date" id="traveldate" disabled><br>
                 <label for="totalfare">Total fare</label>
                 <input type="text" id="totalfare" disabled>
+                <input type="hidden" id="csrf_token" value="{{csrf_token}}">
                 <button type="submit">Book</button>
             </form>
         </div>
@@ -98,12 +99,15 @@
             }
 
             const bus_id = new URLSearchParams(window.location.search).get('bus_id');
+            const csrf_value = document.getElementById('csrf_token').value;
+
 
             // Sending booking request to the server
             const bookingResponse = await fetch('/book', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrf_value 
                 },
                 body: JSON.stringify({
                     bus_id,

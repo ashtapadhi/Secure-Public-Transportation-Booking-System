@@ -23,6 +23,7 @@
                 <input type="text" id="to" name="to" required>
                 <label>Date of Travel</label>
                 <input type="date" id="dateoftravel" name="dateoftravel" required>
+                <input type="hidden" id="csrf_token" value="{{csrf_token}}">
                 <button type="button" id="swapButton">Swap</button>
                 <button type="submit">Search</button>
             </form>
@@ -108,12 +109,14 @@
             const from = document.getElementById('from').value;
             const traveldate = document.getElementById('dateoftravel').value;
             const token = localStorage.getItem('token');
+            const csrf_value = document.getElementById('csrf_token').value;
 
             // Fetch buses based on search criteria
             const bus_response = await fetch('/buses', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrf_value 
                 },
                 body: JSON.stringify({ from, to, traveldate })
             });
@@ -127,7 +130,7 @@
                 // Iterate through retrieved buses and display them
                 buses.forEach(bus => {
                     const listItem = document.createElement('li');
-                    listItem.innerHTML = `Bus Name: <strong>${bus.bus_name}</strong>&emsp;Fare: <strong>${bus.bus_fare}</strong>&emsp;Available Seats: <strong>${bus.available_seats}</strong>`;
+                    listItem.innerHTML = `Bus Name: <strong>${bus.bus_name}</strong>&emsp;Fare: <strong>${bus.bus_fare}</strong>&emsp;Available Seats: <strong>${bus.available_seats}</strong>&emsp;Duration: <strong>${bus.duration}</strong>hrs&emsp;<strong>${bus.start_time}</strong> - <strong>${bus.end_time}</strong>`;
 
                     // Create a button to book the bus
                     const bookButton = document.createElement('button');

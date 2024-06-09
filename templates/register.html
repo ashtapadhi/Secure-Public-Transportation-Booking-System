@@ -20,6 +20,7 @@
                 <label>Re-enter Password</label><input type="password" name="password2" required autocomplete="off">
                 <label>Email</label><input type="email" name="email" required autocomplete="off">
                 <label>Phone number</label><input type="tel" name="phone_number" required autocomplete="off">
+                <input type="hidden" id="csrf_token" value="{{csrf_token}}">
                 <button type="submit">Register</button>
             </form>
         </div>
@@ -58,10 +59,13 @@
                 alert("Please provide a valid phone number");
                 return;
             }
+            const csrf_value = document.getElementById('csrf_token').value;
 
             // Send registration request to the server
             const response = await fetch(form.action, {
                 method: 'POST',
+                headers: { 
+                'X-CSRF-Token': csrf_value },
                 body: data,
             });
             const result = await response.json();

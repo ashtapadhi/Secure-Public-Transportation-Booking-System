@@ -14,8 +14,8 @@ import uuid
 import datetime
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
-import secrets
 import random
+
 
 load_dotenv()
 
@@ -24,6 +24,9 @@ db_name = os.getenv('DB_NAME')
 
 key= os.getenv('KEY')
 cipher_suite = Fernet(key)
+
+#dictionary to store pre-session id for login and registration
+pre_sessions = {}
 
 #template management function
 
@@ -39,8 +42,19 @@ def load_template(filename, nonce):
     
 # Generate anti-CSRF token
 def generate_csrf_token():
-    return secrets.token_hex(16)  # Generate a 32-character random token
+    return hashlib.sha256(os.urandom(64)).hexdigest()  
 
+def validate_csrf_token(client_token,server_token):
+    # Check if both tokens are not empty and are equal
+    return bool(client_token and server_token and client_token == server_token)
+
+def generate_pre_session():
+    """Create pre-session"""
+    pre_session_id = base64.b64encode(random.getrandbits(64).to_bytes(8, 'big')).decode()
+    csrf_token = hashlib.sha256(pre_session_id.encode()).hexdigest()
+    pre_sessions[pre_session_id] = csrf_token
+    print("generated", pre_session_id)
+    return csrf_token, pre_session_id
 
 def hash_data(data):
     """Hash the data using SHA-256 and base64 encoding."""
@@ -102,21 +116,22 @@ def create_session(user_id):
     """Create a new session for the user."""
     session_id = str(uuid.uuid4())
     expiry = datetime.now() + timedelta(hours=1)
+    csrf_token=generate_csrf_token()
     encrypted_session_id=encrypt_data(session_id,cipher_suite)
     encrypted_expiry=encrypt_data(str(expiry),cipher_suite)
     session_id_hash=hash_data(session_id)
-    add_session(encrypted_session_id, user_id, encrypted_expiry,session_id_hash)
+    add_session(encrypted_session_id, user_id, encrypted_expiry,session_id_hash,csrf_token)
     return session_id
 
 
-def add_session(session_id, user_id, expiry,session_id_hash):
+def add_session(session_id, user_id, expiry,session_id_hash,csrf_token):
     """Add a new session to the database."""
     conn = sqlite.connect(db_name)
     c = conn.cursor()
     c.execute('''
-        INSERT INTO sessions (session_id, user_id, expires_at,session_id_hash) 
-        VALUES (?, ?, ?,?)
-    ''', (session_id, user_id, expiry,session_id_hash))
+        INSERT INTO sessions (session_id, user_id, expires_at,session_id_hash,csrf_token) 
+        VALUES (?, ?, ?, ?, ?)
+    ''', (session_id, user_id, expiry,session_id_hash,csrf_token))
     conn.commit()
     conn.close()
 
@@ -133,11 +148,21 @@ def get_current_user(session_id):
         decrypted_expiry = decrypt_data(encrypted_expiry,cipher_suite)
         session_with_decrypted_data = (user_id, decrypted_expiry)
         conn.close()
-        return session_with_decrypted_data
-    else:
-        conn.close()
-        return None
+        return session_with_decrypted_data  
+    conn.close()
+    return None
 
+def get_token(session_id):
+    """Retrieve csrf token from sessions"""
+    conn = sqlite.connect(db_name)
+    c = conn.cursor()
+    hashed_session_id=hash_data(session_id)
+    c.execute('SELECT csrf_token FROM sessions WHERE session_id_hash = ?', (hashed_session_id,))
+    session = c.fetchone()
+    if session:
+        return session  
+    conn.close()
+    return None
 
 
 def delete_session(session_id):
@@ -146,7 +171,6 @@ def delete_session(session_id):
     c = conn.cursor()
     hashed_session_id=hash_data(session_id)
     try:
-        #encrypted_session_id=encrypt_data(session_id,cipher_suite)
         c.execute('DELETE FROM sessions WHERE session_id_hash = ?', (hashed_session_id,))
         conn.commit()
         rows_affected = c.rowcount
@@ -174,9 +198,8 @@ def get_user(username):
         user_with_decrypted_data = (user_id, decrypted_username, decrypted_password)
         conn.close()
         return user_with_decrypted_data
-    else:
-        conn.close()
-        return None
+    conn.close()
+    return None
 
 
 def get_user_details(user_id):
@@ -193,13 +216,9 @@ def get_user_details(user_id):
         user_with_decrypted_data = (name, decrypted_username, decrypted_email, decrypted_phone)
         conn.close()
         return user_with_decrypted_data
-    else:
-        conn.close()
-        return None
-        
-        
-
-
+    conn.close()
+    return None
+  
 def delete_user(user_id):
     """Delete user from the database."""
     conn = sqlite.connect(db_name)
@@ -274,12 +293,23 @@ def get_user_from_booking(booking_id):
 
 #booking management functions
     
-def add_booking(user_id, bus_id, route_id, bus_name, route_start, route_end, travel_date, no_of_pass, total_fare):
+def add_booking(user_id, bus_id, route_id, bus_name,
+                route_start, route_end, travel_date, 
+                no_of_pass, total_fare, c_name, email, 
+                phone, duration, start_time, end_time):
     """Add a new booking to the database."""
     conn = sqlite.connect(db_name)
     c = conn.cursor()
-    c.execute('INSERT INTO booking_details (user_id, bus_id, route_id, bus_name, route_start, route_end, booking_date, seats_booked, total_fare) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', 
-              (user_id, bus_id, route_id, bus_name, route_start, route_end, travel_date, no_of_pass, total_fare))
+    c.execute('''
+        INSERT INTO booking_details (
+            user_id, bus_id, route_id, bus_name, route_start, route_end,
+            booking_date, seats_booked, total_fare, customer_name, email,
+            phone_number, duration, start_time, end_time
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', 
+        (user_id, bus_id, route_id, bus_name, route_start, route_end, 
+        travel_date, no_of_pass, total_fare, c_name, email, 
+        phone, duration, start_time, end_time))
     conn.commit()
     conn.close()
 
@@ -308,6 +338,19 @@ def get_booking_details(user_id):
     conn.close()
     return booking
 
+def get_cancelled_booking_details(user_id):
+    """Retrieve cancelled booking details for a specific user."""
+    conn = sqlite.connect(db_name)
+    c = conn.cursor()
+    c.execute('''
+        SELECT id, user_id, bus_id, bus_name, route_start, route_end, booking_date, seats_booked, total_fare 
+        FROM cancelled_booking_details 
+        WHERE user_id = ?
+    ''', (user_id,))
+    cancelled_booking = c.fetchall()
+    conn.close()
+    return cancelled_booking
+
 
 def cancel_booking(booking_id):
     """Cancel a booking by booking_id."""
@@ -331,7 +374,7 @@ def get_buses(from_city, to_city):
     conn = sqlite.connect(db_name)
     c = conn.cursor()
     c.execute('''
-        SELECT buses.id, buses.bus_name, buses.bus_fare, buses.ac, buses.available_seats 
+        SELECT buses.id, buses.bus_name, buses.bus_fare, buses.ac, buses.available_seats, buses.duration, buses.start_time, buses.end_time 
         FROM buses 
         JOIN routes ON buses.route_id = routes.id 
         WHERE routes.route_start = ? AND routes.route_end = ?
@@ -346,7 +389,9 @@ def get_bus_details(bus_id):
     conn = sqlite.connect(db_name)
     c = conn.cursor()
     c.execute('''
-        SELECT buses.id, buses.bus_name, buses.bus_fare, buses.available_seats, routes.route_start, routes.route_end, route_id 
+        SELECT buses.id, buses.bus_name, buses.bus_fare, buses.available_seats, 
+        buses.duration, buses.start_time, buses.end_time, routes.route_start, 
+        routes.route_end, route_id 
         FROM buses 
         JOIN routes ON buses.route_id = routes.id 
         WHERE buses.id = ?
@@ -415,13 +460,17 @@ def get_route_details(route_id):
 
 
 class RequestHandler(http.server.BaseHTTPRequestHandler):
+    server_version = 'SPTServer'
+    sys_version = 'Program'
 
     # Helper function to send static files
     def serve_static_file(self, path, content_type):
         try:
             with open(path, 'rb') as file:
                 self.send_response(200)
+                self.send_header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload')  # HSTS header
                 self.send_header('Content-type', content_type)
+                self.send_header('X-Content-Type-Options', 'nosniff')
                 self.end_headers()
                 self.wfile.write(file.read())
         except FileNotFoundError:
@@ -430,7 +479,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(b'File not found')
 
     # Helper function to send HTML response
-    def send_html_response(self, status, template):
+    def send_html_response(self, status, template,csrf_token=None,cookie_name=None,
+                          cookie_value=None):
         # Generate a random nonce
         nonce = base64.b64encode(random.getrandbits(64).to_bytes(8, 'big')).decode()
         csp_header = (
@@ -443,11 +493,18 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             f"worker-src 'self'; "
             f"form-action 'self';"
         )
+        template_page=load_template(template,nonce)
+        if csrf_token is not None:
+            template_page=template_page.replace('{{csrf_token}}', csrf_token)
         self.send_response(status)
+        if cookie_name and cookie_value:
+            self.send_header('Set-Cookie', f'{cookie_name}={cookie_value}; HttpOnly; Secure; Path=/; SameSite=Strict')
+        self.send_header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload')  # HSTS header
         self.send_header('Content-type', 'text/html')
         self.send_header('Content-Security-Policy', csp_header)
+        self.send_header('X-Content-Type-Options', 'nosniff')
         self.end_headers()
-        self.wfile.write(load_template(template,nonce).encode())
+        self.wfile.write(template_page.encode())
 
 
     # Helper function to send JSON response
@@ -465,8 +522,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             f"form-action 'self';"
         )
         self.send_response(status)
+        self.send_header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload')  # HSTS header
         self.send_header('Content-type', 'application/json')
         self.send_header('Content-Security-Policy', csp_header)
+        self.send_header('X-Content-Type-Options', 'nosniff')
         self.end_headers()
         self.wfile.write(json.dumps(data).encode())
 
@@ -485,17 +544,22 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             f"form-action 'self';"
         )
         self.send_response(status)
+        self.send_header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload')  # HSTS header
         self.send_header('Content-type', 'application/json')
         self.send_header('Content-Security-Policy', csp_header)
+        self.send_header('X-Content-Type-Options', 'nosniff')
         self.end_headers()
         self.wfile.write(json.dumps({'error': message}).encode())
 
     # Helper function to send cookie response
-    def send_cookie_response(self, status_code, cookie_name, cookie_value, data, cookie_expires=None,cookie_path='/'):
+    def send_cookie_response(self, status_code, cookie_name, cookie_value, data, 
+                            cookie_expires=None,cookie_path='/'):
         cookie = http.cookies.SimpleCookie()
         cookie[cookie_name] = cookie_value
         cookie[cookie_name]['path'] = cookie_path
         cookie[cookie_name]['httponly'] = True
+        cookie[cookie_name]['Secure']=True
+        cookie[cookie_name]['SameSite']='Strict'
         if cookie_expires:
             cookie[cookie_name]['expires'] = cookie_expires
         self.send_response(status_code)
@@ -511,11 +575,41 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             f"worker-src 'self'; "
             f"form-action 'self';"
         )
+        self.send_header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload')  # HSTS header
         self.send_header('Content-type', 'application/json')
         self.send_header('Set-Cookie', cookie.output(header='', sep=''))
         self.send_header('Content-Security-Policy', csp_header)
+        self.send_header('X-Content-Type-Options', 'nosniff')
         self.end_headers()
         self.wfile.write(json.dumps(data).encode())
+    
+    #Helper function to send booking page response
+    def send_booking_page_response(self,bus_id,travel_date,csrf_token=None):
+        nonce = base64.b64encode(random.getrandbits(64).to_bytes(8, 'big')).decode()
+        csp_header = (
+                    f"default-src 'self'; "
+                    f"script-src 'self' 'strict-dynamic' 'nonce-{nonce}' https:; "
+                    f"style-src 'self' ; "
+                    f"object-src 'none'; "
+                    f"base-uri 'none'; "
+                    f"frame-ancestors 'self'; "
+                    f"worker-src 'self'; "
+                    f"form-action 'self';"
+            )
+        booking_page = load_template('book.html',nonce)
+        booking_page = booking_page.replace('{{bus_id}}', bus_id)
+        booking_page = booking_page.replace('{{travel_date}}', travel_date)
+        if csrf_token is not None:
+            booking_page=booking_page.replace('{{csrf_token}}', csrf_token)
+        self.send_response(200)
+        self.send_header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload')  # HSTS header
+        self.send_header('Content-type', 'text/html')
+        self.send_header('Content-Security-Policy', csp_header)
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.end_headers()
+        self.wfile.write(booking_page.encode())
+
+
 
     #function to handle GET requests
     def do_GET(self):
@@ -536,45 +630,39 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
     
         # Handle login page
         elif path == 'login':
-            self.send_html_response(200, 'login.html')
+            csrf_token, pre_session_id = generate_pre_session()
+            self.send_html_response(200, 'login.html',csrf_token,'pre_session_id', pre_session_id)
+            
     
         # Handle registration page
         elif path == 'register':
-            self.send_html_response(200, 'register.html')
+            csrf_token, pre_session_id = generate_pre_session()
+            self.send_html_response(200, 'register.html',csrf_token,'pre_session_id', pre_session_id)
+            
     
         # Handle dashboard page, requiring user authentication
         elif path == 'dashboard':
-            user_id = self.get_user_by_session()
-            if user_id:
-                self.send_html_response(200, 'dashboard.html')
+            user = self.get_user_by_session()
+            
+            if user:
+                token=get_token(self.get_cookie())
+                print("token ",token[0])
+                self.send_html_response(200, 'dashboard.html',token[0])
             else:
                 self.send_error_response(401, 'Unauthorized')
     
         # Handle booking page with dynamic content
         elif path.startswith('bookpage'):
             bus_id = query.get('bus_id', [None])[0]
-            travel_date = query.get('travel_date', [None])[0]
+            travel_date = query.get('travel_date', [None])
             # Generate a random nonce
-            nonce = base64.b64encode(random.getrandbits(64).to_bytes(8, 'big')).decode()
-            csp_header = (
-                f"default-src 'self'; "
-                f"script-src 'self' 'strict-dynamic' 'nonce-{nonce}' https:; "
-                f"style-src 'self' ; "
-                f"object-src 'none'; "
-                f"base-uri 'none'; "
-                f"frame-ancestors 'self'; "
-                f"worker-src 'self'; "
-                f"form-action 'self';"
-            )
-            booking_page = load_template('book.html',nonce)
-            booking_page = booking_page.replace('{{bus_id}}', bus_id)
-            booking_page = booking_page.replace('{{travel_date}}', travel_date)
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.send_header('Content-Security-Policy', csp_header)
-            self.end_headers()
-            self.wfile.write(booking_page.encode())
-    
+            user = self.get_user_by_session()
+            
+            if user:
+                token=get_token(self.get_cookie())
+                self.send_booking_page_response(bus_id,travel_date,token[0])
+            else:
+                self.send_error_response(401, 'Unauthorized')
         # Handle profile page, requiring user authentication
         elif path == 'profile':
             user_id = self.get_user_by_session()
@@ -596,8 +684,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                         'bus_name': bus[1],
                         'bus_fare': bus[2],
                         'available_seats': available_seats,
-                        'route_start': bus[4],
-                        'route_end': bus[5]
+                        'route_start': bus[7],
+                        'route_end': bus[8]
                     })
                     return
             self.send_error_response(404, 'Bus not found')
@@ -645,7 +733,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         elif path == 'edit':
             user_id = self.get_user_by_session()
             if user_id:
-                self.send_html_response(200, 'edituser.html')
+                token=get_token(self.get_cookie())
+                self.send_html_response(200, 'edituser.html',token[0])
             else:
                 self.send_error_response(401, 'Unauthorized')
 
@@ -653,7 +742,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         elif path == 'changepassword':
             user_id = self.get_user_by_session()
             if user_id:
-                self.send_html_response(200, 'changepassword.html')
+                token=get_token(self.get_cookie())
+                self.send_html_response(200, 'changepassword.html',token[0])
             else:
                 self.send_error_response(401, 'Unauthorized')
     
@@ -661,15 +751,37 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         elif path == 'mybookings':
             user_id = self.get_user_by_session()
             if user_id:
-                bookings = get_booking_details(user_id)
-                if bookings:
-                    booking_list = [{'booking_id': booking[0],
-                                    'busname': booking[3],
-                                    'from': booking[4],
-                                    'to': booking[5],
-                                    'traveldate': booking[6],
-                                    'noofseats': booking[7],
-                                    'totalfare': booking[8]} for booking in bookings]
+                active_bookings = get_booking_details(user_id)
+                cancelled_bookings=get_cancelled_booking_details(user_id)
+                booking_list = []
+
+                for booking in active_bookings:
+                    booking_info = {
+                        'booking_id': booking[0],
+                        'busname': booking[3],
+                        'from': booking[4],
+                        'to': booking[5],
+                        'traveldate': booking[6],
+                        'noofseats': booking[7],
+                        'totalfare': booking[8],
+                        'status': 'active'  
+                    }
+                    booking_list.append(booking_info)
+
+                for cancelled_booking in cancelled_bookings:
+                    cancelled_booking_info = {
+                        'booking_id': cancelled_booking[0],
+                        'busname': cancelled_booking[3],
+                        'from': cancelled_booking[4],
+                        'to': cancelled_booking[5],
+                        'traveldate': cancelled_booking[6],
+                        'noofseats': cancelled_booking[7],
+                        'totalfare': cancelled_booking[8],
+                        'status': 'cancelled'  
+                    }
+                    booking_list.append(cancelled_booking_info)
+
+                if booking_list:
                     self.send_json_response(200, booking_list)
                     return
             self.send_error_response(404, 'Booking details not found')
@@ -684,8 +796,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
     
         # Handle unknown paths
         else:
-            self.send_response(404)
-            self.end_headers()
+            self.send_error_response(404,"Page not Found")
+            
 
         
         
@@ -698,19 +810,28 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         raw_data = parse_qs(post_data.decode())
         data = sanitize_input(raw_data)
 
+        
         # Handle different POST requests based on the path
         if self.path == '/login':
             # Process login request
             username = data.get('username')
             password = data.get('password')
-            user = get_user(username)
-            if user and verify_password(password,user[2]):
-                # Successful login
-                session_id = create_session(user[0])
-                self.send_cookie_response(200, 'session_id', session_id,{'message': 'Login successful'})
+            csrf_token = self.headers.get('X-CSRF-Token')
+            print("client token ",csrf_token)
+            pre_session_id = self.get_presession_cookie('pre_session_id')
+            print("server token ",pre_session_id)
+            print(pre_sessions[pre_session_id])
+            if validate_csrf_token(csrf_token,pre_sessions[pre_session_id]):
+                user = get_user(username)
+                if user and verify_password(password,user[2]):
+                    # Successful login
+                    session_id = create_session(user[0])
+                    self.send_cookie_response(200, 'session_id', session_id,{'message': 'Login successful'})
+                else:
+                    # Invalid credentials
+                    self.send_error_response(401, 'Invalid credentials')
             else:
-                # Invalid credentials
-                self.send_error_response(401, 'Invalid credentials')
+                self.send_error_response(403, 'Invalid Token')
 
         elif self.path == '/register':
             # Process registration request
@@ -719,16 +840,21 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             password = data.get('password')
             email = data.get('email')
             phonenumber = data.get('phone_number')
+            csrf_token = self.headers.get('X-CSRF-Token')
+            pre_session_id = self.get_presession_cookie('pre_session_id')
+            if validate_csrf_token(csrf_token,pre_sessions[pre_session_id]):
 
-            if not get_user(username):
-                # User does not exist, add new user
-                add_user(name, username, hash_password(password), email, phonenumber)
-                user = get_user(username)
-                session_id = create_session(user[0])
-                self.send_cookie_response(200, 'session_id', session_id,{'message': 'Registration successful'})         
+                if not get_user(username):
+                    # User does not exist, add new user
+                    add_user(name, username, hash_password(password), email, phonenumber)
+                    user = get_user(username)
+                    session_id = create_session(user[0])
+                    self.send_cookie_response(200, 'session_id', session_id,{'message': 'Registration successful'})         
+                else:
+                    # User already exists
+                    self.send_error_response(409, 'User already exists')
             else:
-                # User already exists
-                self.send_error_response(409, 'User already exists')
+                self.send_error_response(403, 'Invalid Token')
 
         elif self.path == '/buses':
             # Process bus search request
@@ -736,49 +862,72 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             from_city = data['from']
             to_city = data['to']
             travel_date = data['traveldate']
-            buses_list = []
-            buses = get_buses(from_city, to_city)
-            if buses:
-                for bus in buses:
-                    available_seats = get_seat_availability(bus[0], travel_date)
-                    if available_seats is not None:
-                        seats_available = available_seats
-                    else:
-                        set_seat_availability(bus[0], travel_date, bus[4])
-                        seats_available = bus[4]
+            client_csrf_token=self.headers.get('X-CSRF-Token')
+            token=get_token(self.get_cookie())
+            if validate_csrf_token(client_csrf_token,token[0]):
+                buses_list = []
+                buses = get_buses(from_city, to_city)
+                if buses:
+                    for bus in buses:
+                        available_seats = get_seat_availability(bus[0], travel_date)
+                        if available_seats is not None:
+                            seats_available = available_seats
+                        else:
+                            set_seat_availability(bus[0], travel_date, bus[4])
+                            seats_available = bus[4]
 
-                    buses_list.append({
-                        'id': bus[0],
-                        'bus_name': bus[1],
-                        'bus_fare': bus[2],
-                        'ac': bus[3],
-                        'available_seats': seats_available
-                    })
+                        buses_list.append({
+                            'id': bus[0],
+                            'bus_name': bus[1],
+                            'bus_fare': bus[2],
+                            'ac': bus[3],
+                            'available_seats': seats_available,
+                            'duration':bus[5],
+                            'start_time':bus[6],
+                            'end_time':bus[7]   
+                        })
 
-                self.send_json_response(200, buses_list)
+                    self.send_json_response(200, buses_list)
+                else:
+                    self.send_error_response(400,'No buses available in this route')
             else:
-                self.send_error_response(400,'No buses available in this route')
+                self.send_error_response(403,'Invalid csrf token')
 
         elif self.path == '/book':
             # Process booking request
             user_id = self.get_user_by_session()
-            if user_id:
-                data = json.loads(post_data)
-                bus_id = data['bus_id']
-                bus_details = get_bus_details(bus_id)
-                bus_name = bus_details[1]
-                route_id = bus_details[5]
-                route_start = bus_details[4]
-                route_end = bus_details[5]
-                no_of_pass = data['no_of_pass']
-                totalfare = data['total_fare']
-                travel_date = data['travel_date']
+            user=get_user_details(user_id)
+            client_csrf_token=self.headers.get('X-CSRF-Token')
+            token=get_token(self.get_cookie())
+            if validate_csrf_token(client_csrf_token,token):
+                if user_id:
+                    data = json.loads(post_data)
+                    bus_id = data['bus_id']
+                    bus_details = get_bus_details(bus_id)
+                    bus_name = bus_details[1]
+                    route_id = bus_details[9]
+                    route_start = bus_details[7]
+                    route_end = bus_details[8]
+                    no_of_pass = data['no_of_pass']
+                    totalfare = data['total_fare']
+                    travel_date = data['travel_date']
+                    duration=bus_details[7]
+                    start_time=bus_details[5]
+                    end_time=bus_details[6]
+                    user_name=user[0]
+                    user_email=user[2]
+                    user_phone=user[3]
 
-                add_booking(user_id, bus_id, route_id, bus_name, route_start, route_end, travel_date, no_of_pass, totalfare)
-                decrease_seats(no_of_pass, bus_id, travel_date)
-                self.send_json_response(200, {'message': 'Booking successful'})
+                    add_booking(user_id, bus_id, route_id, bus_name, 
+                    route_start, route_end, travel_date, no_of_pass, 
+                    totalfare,user_name,user_email,user_phone,duration,
+                    start_time,end_time)
+                    decrease_seats(no_of_pass, bus_id, travel_date)
+                    self.send_json_response(200, {'message': 'Booking successful'})
+                else:
+                    self.send_error_response(401, 'Unauthorized')
             else:
-                self.send_error_response(401, 'Unauthorized')
+                self.send_error_response(403,'Invalid csrf token')
 
         elif self.path == '/logout':
             # Process logout request
@@ -787,7 +936,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             if session_id and sessions:
                 delete_session(session_id)
             self.send_cookie_response(200, 'session_id',{'message': 'Logout successful'}, 'Thu, 01 Jan 1970 00:00:00 GMT','')
-            self.send_json_response(200, )
+            
 
         else:
             # Invalid session
@@ -798,7 +947,6 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
     def do_DELETE(self):
         # Parse the request path and query
         parsed_path = urlparse(self.path)
-        path = parsed_path.path
         query = parse_qs(parsed_path.query)
     
         # Handle DELETE requests
@@ -850,26 +998,31 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         if self.path == '/editdetails':
             # Process edit user details request
             user_id = self.get_user_by_session()
-            if user_id:
-                name = data.get('name')
-                username = data.get('username')
-                email = data.get('email')
-                phonenumber = data.get('phone_number')
-                user = get_user_details(user_id)
-                oldusername = user[1]
-                if oldusername != username:
-                    # Check if the new username is available
-                    if not get_user(username):
+            client_csrf_token=self.headers.get('X-CSRF-Token')
+            token=get_token(self.get_cookie())
+            if validate_csrf_token(client_csrf_token,token):
+                if user_id:
+                    name = data.get('name')
+                    username = data.get('username')
+                    email = data.get('email')
+                    phonenumber = data.get('phone_number')
+                    user = get_user_details(user_id)
+                    oldusername = user[1]
+                    if oldusername != username:
+                        # Check if the new username is available
+                        if not get_user(username):
+                            update_user(user_id, name, username, email, phonenumber)
+                            self.send_json_response(200, {'message': 'Registration successful'})
+                        else:
+                            self.send_error_response(409, 'Username already taken, Please try another username')
+                    else:
+                        # Update user details
                         update_user(user_id, name, username, email, phonenumber)
                         self.send_json_response(200, {'message': 'Registration successful'})
-                    else:
-                        self.send_error_response(409, 'Username already taken, Please try another username')
                 else:
-                    # Update user details
-                    update_user(user_id, name, username, email, phonenumber)
-                    self.send_json_response(200, {'message': 'Registration successful'})
+                    self.send_error_response(401, 'Invalid session')
             else:
-                self.send_error_response(401, 'Invalid session')
+                self.send_error_response(403,'Invalid csrf token')
         elif self.path == '/changepassword':
             # Process change password request
             user_id = self.get_user_by_session()
@@ -877,25 +1030,30 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             password_hash=get_user(user_details[1])[2]
             old_password=data.get('currentPassword')
             new_password=data.get('newPassword')
-            if user_details and verify_password(old_password,password_hash):
-                update_password(user_id,hash_password(new_password))
-                self.send_json_response(200, {'message': 'Password updated successfully'})
+            client_csrf_token=self.headers.get('X-CSRF-Token')
+            token=get_token(self.get_cookie())
+            if validate_csrf_token(client_csrf_token,token):
+                if user_details and verify_password(old_password,password_hash):
+                    update_password(user_id,hash_password(new_password))
+                    self.send_json_response(200, {'message': 'Password updated successfully'})
+                else:
+                    self.send_error_response(404, 'Provided current password is wrong.')
             else:
-                self.send_error_response(404, 'Provided current password is wrong.')
+                self.send_error_response(403,'Invalid csrf token')
         else:
             # Invalid session
             self.send_error_response(401, 'Invalid session')
-
 
     
     def get_user_by_session(self):
         # Get the user ID from the session
         session_id = self.get_cookie()
-        session = get_current_user(session_id)
-        if session:
-            user_id, expires_at = session
-            if datetime.now() < datetime.fromisoformat(expires_at):
-                return user_id
+        if session_id:
+            session = get_current_user(session_id)
+            if session:
+                user_id, expires_at = session
+                if datetime.now() < datetime.fromisoformat(expires_at):
+                    return user_id
         return None
 
     def get_cookie(self):
@@ -904,14 +1062,24 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         if not cookies:
             return None
         cookies = cookies.split('; ')
-        session_id = None
         for cookie in cookies:
             if cookie.startswith('session_id='):
                 session_id = cookie.split('=')[1]
                 return session_id
-        if not session_id:
-            return None
+        return None
 
+    def destroy_pre_session(self, pre_session_id):
+        if pre_session_id in pre_sessions:
+            del pre_sessions[pre_session_id]
+
+    def get_presession_cookie(self, name):
+        cookies = self.headers.get('Cookie')
+        if cookies:
+            for cookie in cookies.split(';'):
+                cookie = cookie.strip()
+                if cookie.startswith(name + '='):
+                    return cookie[len(name) + 1:]
+        return None
 
 
 if __name__ == '__main__':
@@ -926,4 +1094,3 @@ if __name__ == '__main__':
         httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
         print("Serving on https://localhost:443")
         httpd.serve_forever()
-

@@ -54,7 +54,7 @@
                 alert('An error occurred. Please try again.');
             }
         }
-        
+
         // Fetch and display bookings when the document is loaded
         document.addEventListener('DOMContentLoaded', async function() {
             loadMenu(); // Load the menu
@@ -81,6 +81,7 @@
                         Travel Date: <strong>${booking.traveldate}</strong>&emsp;
                         Seats Booked: <strong>${booking.noofseats}</strong>&emsp;
                         Total Fare: <strong>${booking.totalfare}</strong>&emsp;
+                        Status: <strong>${booking.status}</strong>&emsp;
                     `;
 
                     // Create cancel button for each booking

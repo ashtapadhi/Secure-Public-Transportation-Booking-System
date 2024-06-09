@@ -16,6 +16,7 @@
             <form id="loginform" class="lrforms" action="/login" method="POST">
                 <label>Username</label><input type="text" name="username" id="username" required autocomplete="off">
                 <label>Password</label><input type="password" name="password" id="password" required autocomplete="off">
+                <input type="hidden" id="csrf_token" value="{{csrf_token}}">
                 <button type="submit">Login</button>
             </form>
         </div>
@@ -34,11 +35,14 @@
             event.preventDefault();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
+            const csrf_value = document.getElementById('csrf_token').value;
+       
 
             // Sending login request to the server
             const response = await fetch('/login', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRF-Token': csrf_value },
                 body: new URLSearchParams({ username, password })
             });
 
