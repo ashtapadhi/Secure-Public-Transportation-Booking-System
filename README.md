@@ -57,7 +57,7 @@ To configure the project, you need to set up the following environment variables
 SECRET_KEY="your_secret_key_here"
 DB_NAME="your_database_name_here"
 KEY="your_key_here"
-
+```
 ## Usage
 
 - **Add route and bus details:**
