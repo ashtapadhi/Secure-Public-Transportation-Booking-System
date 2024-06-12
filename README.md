@@ -54,7 +54,6 @@ This project is a secure public transportation booking system that allows users 
 To configure the project, you need to set up the following environment variables in a `.env` file in the root directory of the project. Here is an example of what your `.env` file should look like:
 
 ```plaintext
-SECRET_KEY="your_secret_key_here"
 DB_NAME="your_database_name_here"
 KEY="your_key_here"
 ```
