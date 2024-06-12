@@ -25,7 +25,7 @@ This project is a secure public transportation booking system that allows users 
 
 - **Backend:** Python, SQLite, HTTP server
 - **Frontend:** HTML, CSS, JavaScript 
-- **Security:** HTTPS, Password Hashing, Session Management
+- **Security:** HTTPS, Password Hashing, Session Management, Data Encryption, 
 
 ## Installation
 
@@ -111,6 +111,7 @@ Users can logout after using the system
 - **HTTPS:** Ensures secure communication between the client and server.
 - **Password Hashing:** User passwords are hashed before storing in the database.
 - **Session Expiry:** Sessions are validated against expiry time during requests.
+- **Data Encryption:** User data is encrypted before storing in the database.
 
 
 
